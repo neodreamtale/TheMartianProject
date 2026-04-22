@@ -1,0 +1,28 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Problem {
+  id         String  @id @default(cuid())
+  code       String  @unique @db.VarChar(50) // 强锁定：最多 50 字符
+  type       String  @default("BUSINESS") // 错误分类：SYSTEM / BUSINESS
+  detailPage String? // 如果你需要一个详细说明的界面的话
+
+  toUser      String // 面向用户的高情商安抚文案
+  description String // 内部备注：开发登记该错误码时的场景说明
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("problem")
+}
