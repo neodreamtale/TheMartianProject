@@ -22,11 +22,11 @@ model Problem {
 
   detailPage String? // 如果你需要一个详细说明的界面的话
 
-  toUser     String
-  toEngineer String
-  cause      String
+  toUser     String? @default("Don't panic")
+  toEngineer String? @default("Houston, we have a problem.")
+  cause      String? @default("42")
   devBatch   String
-  comments   String
+  comments   String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
