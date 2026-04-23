@@ -4,25 +4,36 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [pg_trgm]
 }
 
 model Problem {
-  id         String  @id @default(cuid())
-  code       String  @unique @db.VarChar(50) // 强锁定：最多 50 字符
-  type       String  @default("BUSINESS") // 错误分类：SYSTEM / BUSINESS
+  id     String @id @default(cuid())
+  code   String @unique @db.VarChar(50) // 强锁定：最多 50 字符
+  type   String @default("BUSINESS") // 错误分类：SYSTEM / BUSINESS
+  status String @default("ACTIVE") // 状态：ACTIVE、INACTIVE
+
   detailPage String? // 如果你需要一个详细说明的界面的话
 
-  toUser      String // 面向用户的高情商安抚文案
-  description String // 内部备注：开发登记该错误码时的场景说明
+  toUser     String
+  toEngineer String
+  cause      String
+  devBatch   String
+  comments   String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([toUser(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([toEngineer(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([cause(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([devBatch(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("problem")
 }

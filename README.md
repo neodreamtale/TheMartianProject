@@ -1,36 +1,19 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Martian - 取自“火星救援”
 
-## Getting Started
+> "I'm gonna have to science the shit out of this." —— Mark Watney
 
-First, run the development server:
+## 1. 需求分析
+**业务背景**：
+在日常业务开发中，我们发现前端面临的错误挑战主要分为两类完全不同的极端情况：
+1. **系统级灾难（System Crash）**：底层服务报错（如数据库挂掉、代码空指针）。这类情况需要“掩护”与“兜底”。
+2. **业务规则拦截（Business Block）**：系统没问题，但客户**前置操作不到位**或业务链条存在依赖（例如“必须先实名才能下单”、“余额不足需要充值”、“状态已改变不能重复提交”）。这类情况需要的不是简单的报错提醒，而是**精准的操作指引和动作分发**。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+程序员的职责是**“让代码尽量不出错”； 而 Martian 这套错误系统的职责是“当那个不可控的物理世界出错时，系统依然能体面地死、优雅地活，并且第一时间喊人来救火”**！
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**核心使命 (The Pathfinder Mission)**：
+建立一个统一的“异常翻译与任务指挥中心”，兼顾三大受众的使用诉求：
+- **面向客户端用户 (Houston Guidance)**：不仅进行高情商的安抚，还能作为“休斯顿中心”，根据拦截提示，精准分发前端动作（引导用户跳页面、弹窗去完成前置操作）。
+- **面向排障开发 (Watney Log)**：拦截并记录最真实的崩溃堆栈、分类告警（Bug立刻拉警报报修，业务阻断仅打流水）。
+- **面向业务开发 (NASA Control Center 注册台)**：因为业务线会不断扩张，需要提供一个**可视化的“异常与操作注册界面”**。当开发定义了新的业务拦截阻断时，可以在这里直接注册新的错误码，并绑定对应的高情商文案与前端引导动作（Action），彻底告别写死在代码里的硬编码配置。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
