@@ -4,8 +4,19 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('Martian Error Linker is now active!');
     vscode.window.showInformationMessage('🚀 Martian 轨道指挥中心已连接！');
 
+    // 获取配置的服务器地址
+    const getServerUrl = () => {
+        const config = vscode.workspace.getConfiguration('martian');
+        return config.get<string>('serverUrl', 'http://localhost:3001').replace(/\/$/, '');
+    };
+
     context.subscriptions.push(vscode.commands.registerCommand('martian.openCreatePage', (code: string) => {
-        vscode.env.openExternal(vscode.Uri.parse(`http://localhost:3001/pages/problem/edit?code=${code}`));
+        const baseUrl = getServerUrl();
+        vscode.env.openExternal(vscode.Uri.parse(`${baseUrl}/pages/problem/edit?code=${code}`));
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('martian.openSettings', () => {
+        vscode.commands.executeCommand('workbench.action.openSettings', '@ext:martian.martian-error-linker');
     }));
 
     const completionProvider = vscode.languages.registerCompletionItemProvider(
@@ -13,13 +24,22 @@ export function activate(context: vscode.ExtensionContext) {
         {
             async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
                 const linePrefix = document.lineAt(position).text.substr(0, position.character);
+
                 const simpleRegex = /@martian\s+([a-zA-Z0-9_-]*)/i;
                 const match = linePrefix.match(simpleRegex);
-                if (match) {
+                const triggerRegex = /@/i;
+
+                if (!match && !triggerRegex.test(linePrefix)) {
+                    return undefined;
+                }
+
+                if (match && match[1].length > 0) {
                     const typedCode = match[1].toUpperCase();
+                    const baseUrl = getServerUrl();
                     console.log(`[Martian] MATCH SUCCESS! -> "${typedCode}"`);
+
                     try {
-                        const res = await fetch(`http://localhost:3001/api/problem/list?keyword=${typedCode}`);
+                        const res = await fetch(`${baseUrl}/api/problem/list?keyword=${typedCode}`);
                         const json: any = await res.json();
                         const items: vscode.CompletionItem[] = [];
 
@@ -48,7 +68,6 @@ export function activate(context: vscode.ExtensionContext) {
                     }
                 }
 
-                // 情况 B: 正在输入中 (刚打完 @ 或者刚打完空格)
                 return new vscode.CompletionList([], true);
             }
         },
@@ -64,13 +83,14 @@ export function activate(context: vscode.ExtensionContext) {
                 const text = document.getText();
                 const regex = /@martian\s+([a-zA-Z0-9_-]+)/g;
                 let match;
+                const baseUrl = getServerUrl();
 
                 while ((match = regex.exec(text)) !== null) {
                     const code = match[1];
                     const startPos = document.positionAt(match.index + match[0].indexOf(code));
                     const endPos = document.positionAt(match.index + match[0].length);
                     const range = new vscode.Range(startPos, endPos);
-                    const uri = vscode.Uri.parse(`http://localhost:3001/pages/problem/edit?code=${code}`);
+                    const uri = vscode.Uri.parse(`${baseUrl}/pages/problem/edit?code=${code}`);
                     const link = new vscode.DocumentLink(range, uri);
                     link.tooltip = "前往休斯顿查看这个问题";
                     links.push(link);

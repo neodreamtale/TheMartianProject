@@ -18,7 +18,24 @@
     "onLanguage:java"
   ],
   "main": "./out/extension.js",
-  "contributes": {},
+  "contributes": {
+    "configuration": {
+      "title": "Martian（火星救援）",
+      "properties": {
+        "martian.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:3001",
+          "description": "[Martian] 指定异常管理系统的后端服务器地址。插件将通过此地址查询异常详情及生成跳转链接。"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "martian.openSettings",
+        "title": "Martian: 打开插件设置 (直达配置项)"
+      }
+    ]
+  },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
