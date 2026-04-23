@@ -120,6 +120,7 @@
   color: #a0aec0;
   font-weight: 600;
   text-transform: uppercase;
+  overflow: hidden;
   letter-spacing: 1px;
 }
 

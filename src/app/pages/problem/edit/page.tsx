@@ -32,7 +32,6 @@ export default function NasaControlCenter() {
   }, [])
 
   const handleSearch = async (codeToSearch: string = searchCode) => {
-    debugger
     if (!codeToSearch) return
     setLoading(true)
     setMessage('')
@@ -53,14 +52,14 @@ export default function NasaControlCenter() {
           detailPage: json.data.detailPage || '',
           comments: json.data.comments || ''
         })
-        setMessage('🎯 配置已找到，当前处于编辑模式。')
+        setMessage('配置已找到，当前处于编辑模式。')
       } else {
         setIsEditing(false)
         setFormData(prev => ({ ...prev, code: codeToSearch }))
-        setMessage('🌟 这是一个全新的错误码，将为您创建新条目。')
+        setMessage('这是一个全新的错误码，将为您创建新条目。')
       }
     } catch (e) {
-      setMessage('❌ 查询接口异常，请检查网络。')
+      setMessage('查询接口异常，请检查网络。')
     }
     setLoading(false)
   }
@@ -157,17 +156,17 @@ export default function NasaControlCenter() {
             </div>
 
             <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-              <label className={styles.label}>To User / 面向用户的安抚文案 (Houston Guidance)</label>
+              <label className={styles.label}>To User / 用户视角提示 </label>
               <input name="toUser" value={formData.toUser} onChange={handleChange} className={styles.input} />
             </div>
 
             <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-              <label className={styles.label}>To Engineer / 工程师内部警报 (Watney Log)</label>
+              <label className={styles.label}>To Engineer / 工程师视角</label>
               <input name="toEngineer" value={formData.toEngineer} onChange={handleChange} className={styles.input} />
             </div>
 
             <div className={styles.formGroup}>
-              <label className={styles.label}>Root Cause / 死亡根因</label>
+              <label className={styles.label}>Cause / 根因</label>
               <input name="cause" value={formData.cause} onChange={handleChange} className={styles.input} />
             </div>
 
@@ -183,7 +182,7 @@ export default function NasaControlCenter() {
 
             <div className={styles.fullWidth}>
               <button type="submit" className={`${styles.btn} ${styles.submitBtn}`} disabled={loading || !formData.code}>
-                {loading ? 'UPLOADING TO ORBIT...' : 'DEPLOY TO MARTIAN SYSTEM'}
+                提交
               </button>
             </div>
           </form>
