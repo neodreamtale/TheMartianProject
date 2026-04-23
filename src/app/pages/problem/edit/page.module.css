@@ -1,0 +1,225 @@
+.container {
+  min-height: 100vh;
+  background-color: #05080f;
+  background-image:
+    radial-gradient(circle at 15% 50%, rgba(255, 69, 0, 0.08), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(0, 229, 255, 0.05), transparent 25%);
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, sans-serif;
+  padding: 40px 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.dashboard {
+  width: 100%;
+  max-width: 900px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin: 0;
+  background: linear-gradient(90deg, #ff4500, #ff8c00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+}
+
+.subtitle {
+  color: #8b9eb0;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  letter-spacing: 4px;
+}
+
+.panel {
+  background: rgba(16, 22, 35, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.searchBox {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 30px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.searchInput {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 69, 0, 0.3);
+  color: #fff;
+  padding: 12px 20px;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.3s ease;
+  font-family: monospace;
+}
+
+.searchInput:focus {
+  border-color: #ff4500;
+  box-shadow: 0 0 15px rgba(255, 69, 0, 0.2);
+}
+
+.btn {
+  background: linear-gradient(135deg, #ff4500, #cc3700);
+  color: white;
+  border: none;
+  padding: 0 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px #ff4500;
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 0.85rem;
+  color: #a0aec0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.input,
+.textarea,
+.select {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  border-color: #00e5ff;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.badgeNew {
+  background: rgba(0, 229, 255, 0.1);
+  color: #00e5ff;
+  border: 1px solid rgba(0, 229, 255, 0.2);
+}
+
+.badgeEdit {
+  background: rgba(255, 69, 0, 0.1);
+  color: #ff4500;
+  border: 1px solid rgba(255, 69, 0, 0.2);
+}
+
+.submitBtn {
+  margin-top: 30px;
+  width: 100%;
+  padding: 16px;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
+
+.loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 🚀 移动端精细化适配 */
+@media (max-width: 768px) {
+  .title {
+    font-size: 1.8rem;
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+    /* 强制两列合并为一列 */
+  }
+
+  .panel {
+    padding: 20px 15px;
+  }
+
+  .searchBox {
+    flex-direction: column;
+    /* 搜索框和按钮变成上下排布 */
+  }
+
+  .btn {
+    padding: 12px 24px;
+    width: 100%;
+  }
+}
