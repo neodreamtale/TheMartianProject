@@ -1,0 +1,306 @@
+.container {
+  min-height: 100vh;
+  background-color: #05080f;
+  background-image:
+    radial-gradient(circle at 15% 50%, rgba(255, 69, 0, 0.08), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(0, 229, 255, 0.05), transparent 25%);
+  color: #e2e8f0;
+  font-family: 'Courier New', Courier, monospace;
+  padding: 40px 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.dashboard {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.header {
+  border-bottom: 2px solid rgba(0, 229, 255, 0.3);
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+}
+
+.title {
+  color: #00e5ff;
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin: 0 0 10px 0;
+  text-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+}
+
+.subtitle {
+  color: #a0aec0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.filterBar {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+  background: rgba(10, 15, 25, 0.7);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.input,
+.select {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 4px;
+  outline: none;
+  transition: all 0.3s;
+  flex: 1;
+  min-width: 200px;
+  font-family: inherit;
+}
+
+.input:focus,
+.select:focus {
+  border-color: #00e5ff;
+}
+
+.btn {
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid #00e5ff;
+  color: #00e5ff;
+  padding: 12px 24px;
+  cursor: pointer;
+  font-weight: bold;
+  border-radius: 4px;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  min-width: 120px;
+}
+
+.btn:hover {
+  background: rgba(0, 229, 255, 0.2);
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+}
+
+.btnCreate {
+  background: rgba(255, 69, 0, 0.1);
+  border-color: #ff4500;
+  color: #ff4500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  padding: 12px 24px;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.btnCreate:hover {
+  background: rgba(255, 69, 0, 0.2);
+  box-shadow: 0 0 15px rgba(255, 69, 0, 0.4);
+}
+
+.tableWrapper {
+  background: rgba(10, 15, 25, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 15px 20px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.table th {
+  color: #a0aec0;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+}
+
+.table tr {
+  transition: background 0.2s;
+}
+
+.table tr:hover {
+  background: rgba(0, 229, 255, 0.05);
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.badgeBusiness {
+  background: rgba(0, 229, 255, 0.1);
+  color: #00e5ff;
+  border: 1px solid #00e5ff;
+}
+
+.badgeSystem {
+  background: rgba(255, 69, 0, 0.1);
+  color: #ff4500;
+  border: 1px solid #ff4500;
+}
+
+.badgeActive {
+  background: rgba(0, 255, 127, 0.1);
+  color: #00ff7f;
+  border: 1px solid #00ff7f;
+}
+
+.badgeInactive {
+  background: rgba(160, 174, 192, 0.1);
+  color: #a0aec0;
+  border: 1px solid #a0aec0;
+}
+
+.actionLink {
+  color: #00e5ff;
+  text-decoration: none;
+  font-weight: bold;
+  padding: 6px 12px;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.actionLink:hover {
+  background: rgba(0, 229, 255, 0.1);
+}
+
+.loading,
+.empty {
+  text-align: center;
+  padding: 60px;
+  color: #a0aec0;
+  font-size: 1.2rem;
+}
+
+.codeCell {
+  color: #fff;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.truncate {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 🚀 移动端精细化适配：把 Table 转为卡片 (Cards) */
+@media (max-width: 768px) {
+  .title {
+    font-size: 1.8rem;
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+  }
+
+  .filterBar {
+    flex-direction: column;
+    padding: 15px;
+  }
+
+  .input,
+  .select,
+  .btn,
+  .btnCreate {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  /* Table to Card trick */
+  .tableWrapper {
+    background: transparent;
+    border: none;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: 100%;
+  }
+
+  .table thead {
+    display: none;
+    /* 隐藏表头 */
+  }
+
+  .table tr {
+    margin-bottom: 20px;
+    background: rgba(10, 15, 25, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  .table td {
+    text-align: right;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    padding-left: 50%;
+    min-height: 40px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    width: 45%;
+    text-align: left;
+    font-weight: bold;
+    color: #a0aec0;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+  }
+
+  .table td:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+    margin-top: 10px;
+  }
+
+  .truncate {
+    max-width: 100%;
+    white-space: normal;
+    text-align: right;
+  }
+
+  .actionCell {
+    justify-content: flex-end;
+  }
+
+  .actionLink {
+    width: 100%;
+    text-align: center;
+    display: block;
+  }
+}

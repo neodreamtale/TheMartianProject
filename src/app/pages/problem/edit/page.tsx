@@ -76,14 +76,14 @@ export default function NasaControlCenter() {
       const json = await res.json()
       if (json.success) {
         setIsEditing(true)
-        setMessage('✅ 成功同步至指挥中心！')
+        setMessage('成功同步至指挥中心！')
         // 同步修改URL状态
         window.history.replaceState({}, '', `/nasa?code=${formData.code}`)
       } else {
-        setMessage(`❌ 保存失败: ${json.error}`)
+        setMessage(`保存失败: ${json.error}`)
       }
     } catch (e) {
-      setMessage('❌ 网络异常，保存失败。')
+      setMessage('网络异常，保存失败。')
     }
     setLoading(false)
   }
@@ -117,7 +117,7 @@ export default function NasaControlCenter() {
           </div>
 
           {message && (
-            <div style={{ marginBottom: '20px', color: message.includes('❌') ? '#ff4d4f' : '#00e5ff' }}>
+            <div style={{ marginBottom: '20px', color: '#00e5ff' }}>
               {message}
             </div>
           )}
