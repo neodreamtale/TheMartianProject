@@ -1,5 +1,6 @@
 {
   "name": "martian-error-linker",
+  "publisher": "martian",
   "displayName": "Martian Error Linker",
   "description": "Clickable links for @martian error codes in comments.",
   "version": "0.0.1",
