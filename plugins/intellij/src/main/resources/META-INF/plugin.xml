@@ -21,5 +21,11 @@
         <projectConfigurable parentId="tools" 
                              instance="neo.porco.martian.MartianConfigurable"
                              displayName="Martian（火星救援）配置"/>
+
+        <!-- 4. 去除 JavaDoc "Wrong tag" 报黄警告 -->
+        <javadocTagInfo implementation="neo.porco.martian.MartianJavadocTagInfo"/>
+
+        <!-- 5. 监听输入唤起补全 -->
+        <typedHandler implementation="neo.porco.martian.MartianTypedHandler"/>
     </extensions>
 </idea-plugin>
