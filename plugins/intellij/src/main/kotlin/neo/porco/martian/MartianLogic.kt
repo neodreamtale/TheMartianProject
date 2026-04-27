@@ -4,14 +4,16 @@ import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.startup.StartupActivity
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
-import com.intellij.openapi.project.Project
-import javax.swing.JComponent
-import javax.swing.JTextField
 import java.awt.Desktop
 import java.net.URI
+import javax.swing.JComponent
+import javax.swing.JTextField
 
 // 1. 配置管理
 object MartianSettings {
@@ -25,18 +27,62 @@ private fun trace(msg: String) {
     LOG.info("[Martian] $msg")
 }
 
+class MartianStartupActivity : StartupActivity.DumbAware {
+    override fun runActivity(project: Project) {
+        trace("MartianStartupActivity.runActivity, project=${project.name}")
+    }
+}
+
 // 2. 自动补全逻辑 (@martian )
 class MartianCompletionContributor : CompletionContributor() {
+
+    // 空格触发 auto-popup（默认只有字母数字触发，空格不会）
+    @Suppress("OverridingDeprecatedMember", "UnstableApiUsage")
+    override fun invokeAutoPopup(position: PsiElement, typeChar: Char): Boolean {
+        val isValidChar = typeChar == ' ' || typeChar.isLetterOrDigit() || typeChar == '_' || typeChar == '-'
+        if (!isValidChar) return false
+        val comment = PsiTreeUtil.getParentOfType(position, PsiComment::class.java, false)
+            ?: return false
+        val text = comment.text
+        val triggered = if (typeChar == ' ') {
+            // 空格：只要有 @martian 就触发
+            text.contains(Regex("(?i)@martian\\s*$"))
+        } else {
+            // 字母/数字：@martian + 空格已存在才触发（避免干扰打 @martian 本身时的补全）
+            text.contains(Regex("(?i)@martian\\s+"))
+        }
+        trace("invokeAutoPopup typeChar='$typeChar', triggered=$triggered")
+        return triggered
+    }
+
+    // 永远会被调用，用来诊断 PSI 结构
+    override fun beforeCompletion(context: CompletionInitializationContext) {
+        val el = context.file.findElementAt(context.startOffset)
+        trace("beforeCompletion: elementType=${el?.node?.elementType}, elementClass=${el?.javaClass?.simpleName}, parent=${el?.parent?.javaClass?.simpleName}")
+    }
+
     init {
         trace("MartianCompletionContributor init")
         extend(
             CompletionType.BASIC,
-            com.intellij.patterns.PlatformPatterns.psiElement().inside(PsiComment::class.java),
+            // 不限制 PSI 类型，在 addCompletions 里手动判断是否在注释内
+            // 避免 pattern 匹配不上导致根本进不来
+            com.intellij.patterns.PlatformPatterns.psiElement(),
             object : CompletionProvider<CompletionParameters>() {
                 override fun addCompletions(
                     parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet
                 ) {
                     trace("addCompletions invoked, file=${parameters.originalFile.name}, offset=${parameters.offset}")
+
+                    // 往上找任意层的 PsiComment（// 行注释 和 /** */ Javadoc 都能覆盖）
+                    val el = parameters.position
+                    val comment = PsiTreeUtil.getParentOfType(el, PsiComment::class.java, false)
+                    if (comment == null) {
+                        trace("not in comment, skip. elementClass=${el.javaClass.simpleName}, parent=${el.parent?.javaClass?.simpleName}")
+                        return
+                    }
+                    trace("in comment: ${comment.javaClass.simpleName}, text='${comment.text.take(60)}'")
+
                     val position = parameters.editor.caretModel.offset
                     val document = parameters.editor.document
                     val textBefore = document.getText(TextRange(0, position))
@@ -48,11 +94,16 @@ class MartianCompletionContributor : CompletionContributor() {
                         trace("No @martian match, returning")
                         return
                     }
-                    val typedCode = match.groups[1]?.value?.uppercase() ?: ""
-                    trace("match found, typedCode='$typedCode'")
+                    val typedRaw = match.groups[1]?.value ?: ""
+                    val typedCode = typedRaw.uppercase()
+                    trace("match found, typedRaw='$typedRaw', typedCode='$typedCode'")
+
+                    // 当用户继续输入字母导致当前结果被过滤光时，重新调用 addCompletions
+                    // 注意：不能用 withPrefixMatcher("") 固定前缀，否则 "结果全被过滤" 的条件永远不会触发
+                    result.restartCompletionWhenNothingMatches()
 
                     result.addElement(
-                        LookupElementBuilder.create(typedCode).withPresentableText("🆕 创建新异常码: $typedCode")
+                        LookupElementBuilder.create(typedRaw).withPresentableText("🆕 创建新异常码: $typedCode")
                             .withIcon(
                                 com.intellij.openapi.util.IconLoader.getIcon(
                                     "/general/add.png", MartianCompletionContributor::class.java
