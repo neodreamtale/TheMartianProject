@@ -1,0 +1,28 @@
+<idea-plugin>
+    <id>neo.porco.martian</id>
+    <name>Martian（火星救援）</name>
+    <vendor>NeoPorco</vendor>
+    <version>0.0.1</version>
+    <description>关联 Martian 管理exception系统 IntelliJ IDEA 插件</description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- 0. 启动日志 -->
+        <postStartupActivity implementation="neo.porco.martian.MartianStartupActivity"/>
+
+        <!-- 1. 自动补全 -->
+        <completion.contributor language="any"
+                                implementationClass="neo.porco.martian.MartianCompletionContributor"/>
+        
+        <!-- 2. 超链接 -->
+        <psi.referenceContributor language="any" 
+                                  implementationClass="neo.porco.martian.MartianReferenceContributor"/>
+
+        <!-- 3. 配置项 -->
+        <projectConfigurable parentId="tools" 
+                             instance="neo.porco.martian.MartianConfigurable"
+                             displayName="Martian（火星救援）配置"/>
+    </extensions>
+</idea-plugin>
