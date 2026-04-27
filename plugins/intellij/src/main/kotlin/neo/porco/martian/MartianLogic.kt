@@ -182,25 +182,22 @@ class MartianConfigurable : Configurable {
 
 // 6. 监听用户敲击空格，若前面是 @martian，则立即唤起补全
 class MartianTypedHandler : com.intellij.codeInsight.editorActions.TypedHandlerDelegate() {
-    override fun checkAutoPopup(
-        charTyped: Char, project: Project, editor: com.intellij.openapi.editor.Editor, file: PsiFile
+    override fun charTyped(
+        c: Char, project: Project, editor: com.intellij.openapi.editor.Editor, file: PsiFile
     ): Result {
         val offset = editor.caretModel.offset
         val document = editor.document
         if (offset > 0) {
             val lineStart = document.getLineStartOffset(document.getLineNumber(offset))
+            // 注意：charTyped 发生在字符真正上屏之后，此时光标前的内容已经包含了新输入的字符
             val textBeforeCaret = document.getText(TextRange(lineStart, offset))
-            // 将刚敲下的字符和之前的文本组合
-            val combinedText = textBeforeCaret + charTyped
             val triggerRegex = Regex("(?i)@martian\\s+[a-zA-Z0-9_-]*$")
-            trace("检查是否应该弹: charTyped='$charTyped', combinedText='$combinedText'")
-            if (triggerRegex.containsMatchIn(combinedText)) {
-                // 命中时，由于在注释中，IDEA 的 AutoPopupController 可能会静默拦截弹窗请求
-                // 我们直接使用 CodeCompletionHandlerBase 暴力唤起 IDEA 的补全窗口
+            if (triggerRegex.containsMatchIn(textBeforeCaret)) {
                 ApplicationManager.getApplication().invokeLater {
-                    CodeCompletionHandlerBase(CompletionType.BASIC).invokeCompletion(project, editor)
+                    if (!editor.isDisposed && !project.isDisposed) {
+                        CodeCompletionHandlerBase(CompletionType.BASIC).invokeCompletion(project, editor)
+                    }
                 }
-                return if (charTyped == ' ') Result.STOP else Result.CONTINUE
             }
         }
         return Result.CONTINUE
