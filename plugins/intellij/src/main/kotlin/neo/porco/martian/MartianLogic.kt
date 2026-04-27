@@ -2,6 +2,7 @@ package neo.porco.martian
 
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
@@ -17,9 +18,17 @@ object MartianSettings {
     var serverUrl: String = "http://localhost:3001"
 }
 
+private val LOG = Logger.getInstance("neo.porco.martian")
+
+private fun trace(msg: String) {
+    println("[Martian] $msg")
+    LOG.info("[Martian] $msg")
+}
+
 // 2. 自动补全逻辑 (@martian )
 class MartianCompletionContributor : CompletionContributor() {
     init {
+        trace("MartianCompletionContributor init")
         extend(
             CompletionType.BASIC,
             com.intellij.patterns.PlatformPatterns.psiElement().inside(PsiComment::class.java),
@@ -27,13 +36,20 @@ class MartianCompletionContributor : CompletionContributor() {
                 override fun addCompletions(
                     parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet
                 ) {
+                    trace("addCompletions invoked, file=${parameters.originalFile.name}, offset=${parameters.offset}")
                     val position = parameters.editor.caretModel.offset
                     val document = parameters.editor.document
                     val textBefore = document.getText(TextRange(0, position))
+                    trace("textBefore='$textBefore'")
 
                     val regex = Regex("@martian\\s+([a-zA-Z0-9_-]*)$", RegexOption.IGNORE_CASE)
-                    val match = regex.find(textBefore) ?: return
+                    val match = regex.find(textBefore)
+                    if (match == null) {
+                        trace("No @martian match, returning")
+                        return
+                    }
                     val typedCode = match.groups[1]?.value?.uppercase() ?: ""
+                    trace("match found, typedCode='$typedCode'")
 
                     result.addElement(
                         LookupElementBuilder.create(typedCode).withPresentableText("🆕 创建新异常码: $typedCode")
@@ -42,9 +58,11 @@ class MartianCompletionContributor : CompletionContributor() {
                                     "/general/add.png", MartianCompletionContributor::class.java
                                 )
                             ).withInsertHandler { ctx, _ ->
+                                trace("insert handler fired, code=$typedCode")
                                 Desktop.getDesktop()
                                     .browse(URI("${MartianSettings.serverUrl}/pages/problem/edit?code=$typedCode"))
                             })
+                    trace("addElement done")
                 }
             })
     }
