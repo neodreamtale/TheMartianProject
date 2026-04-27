@@ -48,12 +48,10 @@ class MartianCompletionContributor : CompletionContributor() {
                     // 1. 检查是否已经打出了 @martian 加上空格
                     // 清除 IDEA 补全期间在内存中自动注入的光标占位符 (防止它打断我们的正则匹配)
                     val dummy = CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED
-                    val cleanText = textBeforeCaret
-                        .replace("$dummy ", "")
-                        .replace(dummy, "")
-                        
+                    val cleanText = textBeforeCaret.replace("$dummy ", "").replace(dummy, "")
+
                     trace("addCompletions invoked, cleanText='$cleanText'")
-                    
+
                     val triggerRegex = Regex("(?i)@martian\\s+([a-zA-Z0-9_-]*)$")
                     val match = triggerRegex.find(cleanText)
 
@@ -140,25 +138,25 @@ class MartianCompletionContributor : CompletionContributor() {
                             val newResult = result.withPrefixMatcher(typedKeyword)
                             // 提供 @martian 这个补全项，这样窗口就不会因为没结果而关闭
                             newResult.addElement(LookupElementBuilder.create("@martian").withInsertHandler { ctx, _ ->
-                                    // 阻止回车键或选中时产生的默认换行/字符插入动作
-                                    ctx.setAddCompletionChar(false)
+                                // 阻止回车键或选中时产生的默认换行/字符插入动作
+                                ctx.setAddCompletionChar(false)
 
-                                    val offset = ctx.selectionEndOffset
-                                    val chars = ctx.document.charsSequence
-                                    // 自动追加一个空格（如果后面没有空格的话），并且主动唤起下一次补全（展示报错码）
-                                    if (offset == chars.length || chars[offset] != ' ') {
-                                        ctx.document.insertString(offset, " ")
+                                val offset = ctx.selectionEndOffset
+                                val chars = ctx.document.charsSequence
+                                // 自动追加一个空格（如果后面没有空格的话），并且主动唤起下一次补全（展示报错码）
+                                if (offset == chars.length || chars[offset] != ' ') {
+                                    ctx.document.insertString(offset, " ")
+                                }
+                                ctx.editor.caretModel.moveToOffset(offset + 1)
+
+                                com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                                    if (!ctx.editor.isDisposed) {
+                                        CodeCompletionHandlerBase(
+                                            CompletionType.BASIC
+                                        ).invokeCompletion(ctx.project, ctx.editor)
                                     }
-                                    ctx.editor.caretModel.moveToOffset(offset + 1)
-
-                                    com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
-                                            if (!ctx.editor.isDisposed) {
-                                                CodeCompletionHandlerBase(
-                                                    CompletionType.BASIC
-                                                ).invokeCompletion(ctx.project, ctx.editor)
-                                            }
-                                        }
-                                }.withTypeText("Martian Keyword"))
+                                }
+                            }.withTypeText("Martian Keyword"))
                         }
                     } else {
                         trace("addCompletions: ignore, textBeforeCaret='$textBeforeCaret'")
@@ -215,14 +213,6 @@ class MartianConfigurable : Configurable {
     }
 }
 
-class MartianJavadocTagInfo : com.intellij.psi.javadoc.JavadocTagInfo {
-    override fun getName(): String = "martian"
-    override fun isInline(): Boolean = false
-    override fun isValidInContext(element: PsiElement?): Boolean = true
-    override fun getReference(value: com.intellij.psi.javadoc.PsiDocTagValue?): PsiReference? = null
-    override fun checkTagValue(value: com.intellij.psi.javadoc.PsiDocTagValue?): String? = null
-}
-
 // 6. 监听用户敲击空格，若前面是 @martian，则立即唤起补全
 class MartianTypedHandler : com.intellij.codeInsight.editorActions.TypedHandlerDelegate() {
     override fun checkAutoPopup(
@@ -247,11 +237,7 @@ class MartianTypedHandler : com.intellij.codeInsight.editorActions.TypedHandlerD
                     // 命中时，由于在注释中，IDEA 的 AutoPopupController 可能会静默拦截弹窗请求
                     // 我们直接使用 CodeCompletionHandlerBase 暴力唤起 IDEA 的补全窗口
                     com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
-                        if (!editor.isDisposed) {
-                            com.intellij.codeInsight.completion.CodeCompletionHandlerBase(
-                                com.intellij.codeInsight.completion.CompletionType.BASIC
-                            ).invokeCompletion(project, editor)
-                        }
+                        CodeCompletionHandlerBase(CompletionType.BASIC).invokeCompletion(project, editor)
                     }
                     // 注意：如果是空格，我们拦截并主动弹窗（STOP 防止 IDEA 忽略空格弹窗）
                     // 但如果是字母/数字/下划线，IDEA 原本就会弹窗/过滤，此时返回 CONTINUE 就能让弹窗顺畅过滤
@@ -261,4 +247,13 @@ class MartianTypedHandler : com.intellij.codeInsight.editorActions.TypedHandlerD
         }
         return Result.CONTINUE
     }
+}
+
+
+class MartianJavadocTagInfo : com.intellij.psi.javadoc.JavadocTagInfo {
+    override fun getName(): String = "martian"
+    override fun isInline(): Boolean = false
+    override fun isValidInContext(element: PsiElement?): Boolean = true
+    override fun getReference(value: com.intellij.psi.javadoc.PsiDocTagValue?): PsiReference? = null
+    override fun checkTagValue(value: com.intellij.psi.javadoc.PsiDocTagValue?): String? = null
 }
