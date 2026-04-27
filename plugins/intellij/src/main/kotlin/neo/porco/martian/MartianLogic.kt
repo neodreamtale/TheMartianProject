@@ -3,13 +3,15 @@ package neo.porco.martian
 import com.google.gson.JsonParser
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.lang.documentation.AbstractDocumentationProvider
+import com.intellij.lang.java.JavaDocumentationProvider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.NlsSafe
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
+import com.intellij.psi.javadoc.PsiDocTag
 import com.intellij.util.ProcessingContext
 import java.awt.Desktop
 import java.net.HttpURLConnection
@@ -17,9 +19,6 @@ import java.net.URI
 import java.net.URL
 import javax.swing.JComponent
 import javax.swing.JTextField
-import com.intellij.lang.documentation.AbstractDocumentationProvider
-import com.intellij.lang.java.JavaDocumentationProvider
-import com.intellij.psi.javadoc.PsiDocTag
 
 // 1. 配置管理
 object MartianSettings {
@@ -63,7 +62,7 @@ class MartianCompletionContributor : CompletionContributor() {
     private fun completeCodeInfoIfNeed(match: MatchResult, result: CompletionResultSet) {
         val typedCode = match.groupValues[1]
         trace("addCompletions: matched `@martian`, typedCode='$typedCode'")
-
+        result.stopHere()//关闭普通的java注释提示
         val newResult = result.withPrefixMatcher(typedCode)
         // 关闭当前的本地过滤，立刻重新执行整个 addCompletions 再次发起网络请求！
         newResult.restartCompletionOnAnyPrefixChange()
@@ -127,7 +126,7 @@ class MartianCompletionContributor : CompletionContributor() {
      * 如果没呼唤martian就呼唤一下martian
      */
     private fun completeMartianIfNeed(
-        cleanText: String, result: CompletionResultSet, textBeforeCaret: @NlsSafe String
+        cleanText: String, result: CompletionResultSet, textBeforeCaret: String
     ) {
         val keywordRegex = Regex("(?i)@[a-zA-Z0-9_-]*$")
         val kwMatch = keywordRegex.find(cleanText)
@@ -235,7 +234,7 @@ class MartianDocumentationProvider : AbstractDocumentationProvider() {
         // 向上查找，如果用户光标落在 @martian 标签本身或其附近的内容上，就精准提取这一个 Tag 作为触发元素
         var parent = contextElement
         while (parent != null) {
-            if (parent is com.intellij.psi.javadoc.PsiDocTag && parent.name == "martian") {
+            if (parent is PsiDocTag && parent.name == "martian") {
                 return parent
             }
             if (parent is PsiDocCommentOwner) break
@@ -246,7 +245,7 @@ class MartianDocumentationProvider : AbstractDocumentationProvider() {
 
     override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
         // 2. 如果光标悬停在 @martian 这个 tag 标签本身或附近
-        if (element is com.intellij.psi.javadoc.PsiDocTag && element.name == "martian") {
+        if (element is PsiDocTag && element.name == "martian") {
             val code = element.valueElement?.text ?: ""
             if (code.isNotBlank()) {
                 trace("generateDoc for @martian tag with code='$code'")
@@ -318,7 +317,7 @@ class MartianDocumentationProvider : AbstractDocumentationProvider() {
     private fun buildMartianListDoc(
         element: PsiDocCommentOwner, originalElement: PsiElement?, martianTags: Array<out PsiDocTag>
     ): String {
-        var baseDoc = JavaDocumentationProvider().generateDoc(element, originalElement) ?: ""
+        val baseDoc = JavaDocumentationProvider().generateDoc(element, originalElement) ?: ""
         val st = StringBuilder("<hr/><b>Martian 异常码绑定：</b><br/><ul>")
         for (tag in martianTags) {
             val code = tag.valueElement?.text ?: ""
@@ -326,12 +325,10 @@ class MartianDocumentationProvider : AbstractDocumentationProvider() {
             st.append("<li><b>$code</b> <a href=\"$link\">[查看错误码]</a></li>")
         }
         st.append("</ul>")
-
-        // 将 </body> 替换掉以插入新内容（或者直接拼在末尾）
-        if (baseDoc.contains("</body>")) {
-            return baseDoc.replace("</body>", st.toString() + "</body>")
+        return if (baseDoc.contains("</body>")) {
+            baseDoc.replace("</body>", "$st</body>")
         } else {
-            return baseDoc + st.toString()
+            baseDoc + st.toString()
         }
     }
 
