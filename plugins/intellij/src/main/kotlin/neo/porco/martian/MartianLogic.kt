@@ -34,7 +34,8 @@ class MartianCompletionContributor : CompletionContributor() {
 
     init {
         extend(
-            CompletionType.BASIC, com.intellij.patterns.PlatformPatterns.psiElement(),
+            CompletionType.BASIC,
+            com.intellij.patterns.PlatformPatterns.psiElement(),
             object : CompletionProvider<CompletionParameters>() {
                 override fun addCompletions(
                     parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet
@@ -45,8 +46,14 @@ class MartianCompletionContributor : CompletionContributor() {
                     val textBeforeCaret = document.getText(TextRange(lineStart, offset))
 
                     // 1. 检查是否已经打出了 @martian 加上空格
-                    // We remove IntellijIdeaRulezzz from the text before caret if it exists
-                    val cleanText = textBeforeCaret.replace("IntellijIdeaRulezzz", "")
+                    // 清除 IDEA 补全期间在内存中自动注入的光标占位符 (防止它打断我们的正则匹配)
+                    val dummy = CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED
+                    val cleanText = textBeforeCaret
+                        .replace("$dummy ", "")
+                        .replace(dummy, "")
+                        
+                    trace("addCompletions invoked, cleanText='$cleanText'")
+                    
                     val triggerRegex = Regex("(?i)@martian\\s+([a-zA-Z0-9_-]*)$")
                     val match = triggerRegex.find(cleanText)
 
@@ -55,7 +62,7 @@ class MartianCompletionContributor : CompletionContributor() {
                         trace("addCompletions: matched `@martian`, typedCode='$typedCode'")
 
                         val newResult = result.withPrefixMatcher(typedCode)
-                        
+
                         // ！！！！极其关键的一句！！！！
                         // 告诉 IDEA：每当用户多敲一个字母导致 prefix(前缀) 改变时，
                         // 关闭当前的本地过滤，立刻重新执行整个 addCompletions 再次发起网络请求！
@@ -85,8 +92,7 @@ class MartianCompletionContributor : CompletionContributor() {
                                             if (obj.has("cause") && !obj.get("cause").isJsonNull) obj.get("cause").asString else "无原因"
 
                                         // 构造提示列表的单行展示项
-                                        val item = LookupElementBuilder.create(code)
-                                            .withTypeText("[$status]") // 右侧灰色小字
+                                        val item = LookupElementBuilder.create(code).withTypeText("[$status]") // 右侧灰色小字
                                             .withTailText(" - $cause", true) // 跟随在代码后面的灰色副文本
 
                                         newResult.addElement(item)
@@ -102,8 +108,7 @@ class MartianCompletionContributor : CompletionContributor() {
                         // 如果连 typedCode 都没有，网络又没返回，就加一个占位等用户继续输入
                         if (typedCode.isNotEmpty()) {
                             newResult.addElement(
-                                LookupElementBuilder.create(typedCode)
-                                    .withPresentableText("🆕 创建新异常码: $typedCode")
+                                LookupElementBuilder.create(typedCode).withPresentableText("🆕 创建新异常码: $typedCode")
                                     .withInsertHandler { _, _ ->
                                         // 选中这条后，自动用浏览器打开新建页面
                                         try {
@@ -115,10 +120,8 @@ class MartianCompletionContributor : CompletionContributor() {
                                     })
                         } else if (!hasItems) {
                             newResult.addElement(
-                                LookupElementBuilder.create("")
-                                    .withPresentableText("正在等待输入异常码或响应...")
-                                    .withInsertHandler { _, _ -> }
-                            )
+                                LookupElementBuilder.create("").withPresentableText("正在等待输入异常码或响应...")
+                                    .withInsertHandler { _, _ -> })
                         }
                         // =======================================
 
@@ -136,24 +139,26 @@ class MartianCompletionContributor : CompletionContributor() {
                             trace("addCompletions: typing keyword, typedKeyword='$typedKeyword'")
                             val newResult = result.withPrefixMatcher(typedKeyword)
                             // 提供 @martian 这个补全项，这样窗口就不会因为没结果而关闭
-                            newResult.addElement(
-                                LookupElementBuilder.create("@martian")
-                                    .withInsertHandler { ctx, _ ->
-                                        // 阻止回车键或选中时产生的默认换行/字符插入动作
-                                        ctx.setAddCompletionChar(false)
+                            newResult.addElement(LookupElementBuilder.create("@martian").withInsertHandler { ctx, _ ->
+                                    // 阻止回车键或选中时产生的默认换行/字符插入动作
+                                    ctx.setAddCompletionChar(false)
 
-                                        val offset = ctx.selectionEndOffset
-                                        val chars = ctx.document.charsSequence
-                                        // 自动追加一个空格（如果后面没有空格的话），并且主动唤起下一次补全（展示报错码）
-                                        if (offset == chars.length || chars[offset] != ' ') {
-                                            ctx.document.insertString(offset, " ")
-                                        }
-                                        ctx.editor.caretModel.moveToOffset(offset + 1)
-
-                                        com.intellij.codeInsight.AutoPopupController.getInstance(ctx.project)
-                                            .scheduleAutoPopup(ctx.editor)
+                                    val offset = ctx.selectionEndOffset
+                                    val chars = ctx.document.charsSequence
+                                    // 自动追加一个空格（如果后面没有空格的话），并且主动唤起下一次补全（展示报错码）
+                                    if (offset == chars.length || chars[offset] != ' ') {
+                                        ctx.document.insertString(offset, " ")
                                     }
-                                    .withTypeText("Martian Keyword"))
+                                    ctx.editor.caretModel.moveToOffset(offset + 1)
+
+                                    com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                                            if (!ctx.editor.isDisposed) {
+                                                CodeCompletionHandlerBase(
+                                                    CompletionType.BASIC
+                                                ).invokeCompletion(ctx.project, ctx.editor)
+                                            }
+                                        }
+                                }.withTypeText("Martian Keyword"))
                         }
                     } else {
                         trace("addCompletions: ignore, textBeforeCaret='$textBeforeCaret'")
@@ -239,8 +244,15 @@ class MartianTypedHandler : com.intellij.codeInsight.editorActions.TypedHandlerD
                 val triggerRegex = Regex("(?i)@martian\\s+[a-zA-Z0-9_-]*$")
                 trace("checkAutoPopup: charTyped='$charTyped', combinedText='$combinedText'")
                 if (triggerRegex.containsMatchIn(combinedText)) {
-                    // 命中时，主动计划一次弹窗 (这解决了 IDEA 在注释中默认不弹框的问题)
-                    com.intellij.codeInsight.AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+                    // 命中时，由于在注释中，IDEA 的 AutoPopupController 可能会静默拦截弹窗请求
+                    // 我们直接使用 CodeCompletionHandlerBase 暴力唤起 IDEA 的补全窗口
+                    com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                        if (!editor.isDisposed) {
+                            com.intellij.codeInsight.completion.CodeCompletionHandlerBase(
+                                com.intellij.codeInsight.completion.CompletionType.BASIC
+                            ).invokeCompletion(project, editor)
+                        }
+                    }
                     // 注意：如果是空格，我们拦截并主动弹窗（STOP 防止 IDEA 忽略空格弹窗）
                     // 但如果是字母/数字/下划线，IDEA 原本就会弹窗/过滤，此时返回 CONTINUE 就能让弹窗顺畅过滤
                     return if (charTyped == ' ') Result.STOP else Result.CONTINUE
