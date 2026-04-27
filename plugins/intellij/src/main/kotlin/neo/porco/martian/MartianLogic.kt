@@ -218,31 +218,24 @@ class MartianTypedHandler : com.intellij.codeInsight.editorActions.TypedHandlerD
     override fun checkAutoPopup(
         charTyped: Char, project: Project, editor: com.intellij.openapi.editor.Editor, file: PsiFile
     ): Result {
-        // 允许空格、字母、数字、下划线、横线主动唤起弹窗
-        if (charTyped == ' ' || charTyped.isLetterOrDigit() || charTyped == '_' || charTyped == '-') {
-            val offset = editor.caretModel.offset
-            val document = editor.document
-            if (offset > 0) {
-                val lineStart = document.getLineStartOffset(document.getLineNumber(offset))
-                val textBeforeCaret = document.getText(TextRange(lineStart, offset))
-
-                // 将刚敲下的字符和之前的文本组合
-                val combinedText = textBeforeCaret + charTyped
-
-                // 检查当前行光标前是不是属于 @martian 的输入区域
-                // 例如: "@martian " 或者 "@martian CO"
-                val triggerRegex = Regex("(?i)@martian\\s+[a-zA-Z0-9_-]*$")
-                trace("checkAutoPopup: charTyped='$charTyped', combinedText='$combinedText'")
-                if (triggerRegex.containsMatchIn(combinedText)) {
-                    // 命中时，由于在注释中，IDEA 的 AutoPopupController 可能会静默拦截弹窗请求
-                    // 我们直接使用 CodeCompletionHandlerBase 暴力唤起 IDEA 的补全窗口
-                    com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
-                        CodeCompletionHandlerBase(CompletionType.BASIC).invokeCompletion(project, editor)
-                    }
-                    // 注意：如果是空格，我们拦截并主动弹窗（STOP 防止 IDEA 忽略空格弹窗）
-                    // 但如果是字母/数字/下划线，IDEA 原本就会弹窗/过滤，此时返回 CONTINUE 就能让弹窗顺畅过滤
-                    return if (charTyped == ' ') Result.STOP else Result.CONTINUE
+        val offset = editor.caretModel.offset
+        val document = editor.document
+        if (offset > 0) {
+            val lineStart = document.getLineStartOffset(document.getLineNumber(offset))
+            val textBeforeCaret = document.getText(TextRange(lineStart, offset))
+            // 将刚敲下的字符和之前的文本组合
+            val combinedText = textBeforeCaret + charTyped
+            val triggerRegex = Regex("(?i)@martian\\s+[a-zA-Z0-9_-]*$")
+            trace("checkAutoPopup: charTyped='$charTyped', combinedText='$combinedText'")
+            if (triggerRegex.containsMatchIn(combinedText)) {
+                // 命中时，由于在注释中，IDEA 的 AutoPopupController 可能会静默拦截弹窗请求
+                // 我们直接使用 CodeCompletionHandlerBase 暴力唤起 IDEA 的补全窗口
+                com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                    CodeCompletionHandlerBase(CompletionType.BASIC).invokeCompletion(project, editor)
                 }
+                // 注意：如果是空格，我们拦截并主动弹窗（STOP 防止 IDEA 忽略空格弹窗）
+                // 但如果是字母/数字/下划线，IDEA 原本就会弹窗/过滤，此时返回 CONTINUE 就能让弹窗顺畅过滤
+                return if (charTyped == ' ') Result.STOP else Result.CONTINUE
             }
         }
         return Result.CONTINUE
