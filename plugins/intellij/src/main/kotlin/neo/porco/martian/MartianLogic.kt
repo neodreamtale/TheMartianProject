@@ -14,6 +14,8 @@ import java.awt.Desktop
 import java.net.URI
 import javax.swing.JComponent
 import javax.swing.JTextField
+import kotlin.jvm.java
+
 
 // 1. 配置管理
 object MartianSettings {
@@ -27,93 +29,67 @@ private fun trace(msg: String) {
     LOG.info("[Martian] $msg")
 }
 
-class MartianStartupActivity : StartupActivity.DumbAware {
-    override fun runActivity(project: Project) {
-        trace("MartianStartupActivity.runActivity, project=${project.name}")
-    }
-}
-
 // 2. 自动补全逻辑 (@martian )
 class MartianCompletionContributor : CompletionContributor() {
 
-    // 空格触发 auto-popup（默认只有字母数字触发，空格不会）
-    @Suppress("OverridingDeprecatedMember", "UnstableApiUsage")
-    override fun invokeAutoPopup(position: PsiElement, typeChar: Char): Boolean {
-        val isValidChar = typeChar == ' ' || typeChar.isLetterOrDigit() || typeChar == '_' || typeChar == '-'
-        if (!isValidChar) return false
-        val comment = PsiTreeUtil.getParentOfType(position, PsiComment::class.java, false)
-            ?: return false
-        val text = comment.text
-        val triggered = if (typeChar == ' ') {
-            // 空格：只要有 @martian 就触发
-            text.contains(Regex("(?i)@martian\\s*$"))
-        } else {
-            // 字母/数字：@martian + 空格已存在才触发（避免干扰打 @martian 本身时的补全）
-            text.contains(Regex("(?i)@martian\\s+"))
-        }
-        trace("invokeAutoPopup typeChar='$typeChar', triggered=$triggered")
-        return triggered
-    }
-
-    // 永远会被调用，用来诊断 PSI 结构
-    override fun beforeCompletion(context: CompletionInitializationContext) {
-        val el = context.file.findElementAt(context.startOffset)
-        trace("beforeCompletion: elementType=${el?.node?.elementType}, elementClass=${el?.javaClass?.simpleName}, parent=${el?.parent?.javaClass?.simpleName}")
-    }
-
     init {
-        trace("MartianCompletionContributor init")
         extend(
-            CompletionType.BASIC,
-            // 不限制 PSI 类型，在 addCompletions 里手动判断是否在注释内
-            // 避免 pattern 匹配不上导致根本进不来
-            com.intellij.patterns.PlatformPatterns.psiElement(),
+            CompletionType.BASIC, com.intellij.patterns.PlatformPatterns.psiElement().inside(PsiComment::class.java),
             object : CompletionProvider<CompletionParameters>() {
                 override fun addCompletions(
                     parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet
                 ) {
-                    trace("addCompletions invoked, file=${parameters.originalFile.name}, offset=${parameters.offset}")
-
-                    // 往上找任意层的 PsiComment（// 行注释 和 /** */ Javadoc 都能覆盖）
-                    val el = parameters.position
-                    val comment = PsiTreeUtil.getParentOfType(el, PsiComment::class.java, false)
-                    if (comment == null) {
-                        trace("not in comment, skip. elementClass=${el.javaClass.simpleName}, parent=${el.parent?.javaClass?.simpleName}")
-                        return
-                    }
-                    trace("in comment: ${comment.javaClass.simpleName}, text='${comment.text.take(60)}'")
-
-                    val position = parameters.editor.caretModel.offset
                     val document = parameters.editor.document
-                    val textBefore = document.getText(TextRange(0, position))
-                    trace("textBefore='$textBefore'")
+                    val offset = parameters.offset
+                    val lineStart = document.getLineStartOffset(document.getLineNumber(offset))
+                    val textBeforeCaret = document.getText(TextRange(lineStart, offset))
 
-                    val regex = Regex("@martian\\s+([a-zA-Z0-9_-]*)$", RegexOption.IGNORE_CASE)
-                    val match = regex.find(textBefore)
-                    if (match == null) {
-                        trace("No @martian match, returning")
+                    // 1. 检查是否已经打出了 @martian 加上空格
+                    val triggerRegex = Regex("(?i)@martian\\s+([a-zA-Z0-9_-]*)$")
+                    val match = triggerRegex.find(textBeforeCaret)
+
+                    if (match != null) {
+                        val typedCode = match.groupValues[1]
+                        trace("addCompletions: matched `@martian`, typedCode='$typedCode'")
+
+                        val newResult = result.withPrefixMatcher(typedCode)
+                        newResult.addElement(LookupElementBuilder.create("123123")
+                            .withTypeText("模拟测试数据"))
                         return
                     }
-                    val typedRaw = match.groups[1]?.value ?: ""
-                    val typedCode = typedRaw.uppercase()
-                    trace("match found, typedRaw='$typedRaw', typedCode='$typedCode'")
 
-                    // 当用户继续输入字母导致当前结果被过滤光时，重新调用 addCompletions
-                    // 注意：不能用 withPrefixMatcher("") 固定前缀，否则 "结果全被过滤" 的条件永远不会触发
-                    result.restartCompletionWhenNothingMatches()
-
-                    result.addElement(
-                        LookupElementBuilder.create(typedRaw).withPresentableText("🆕 创建新异常码: $typedCode")
-                            .withIcon(
-                                com.intellij.openapi.util.IconLoader.getIcon(
-                                    "/general/add.png", MartianCompletionContributor::class.java
-                                )
-                            ).withInsertHandler { ctx, _ ->
-                                trace("insert handler fired, code=$typedCode")
-                                Desktop.getDesktop()
-                                    .browse(URI("${MartianSettings.serverUrl}/pages/problem/edit?code=$typedCode"))
-                            })
-                    trace("addElement done")
+                    // 2. 如果还没打完 @martian+空格，那我们看是不是正在打 @m...
+                    // 这里非常关键：如果没有塞入任何匹配当前输入的选项，IDEA 就会立刻关闭补全窗口！
+                    // 所以我们要把 @martian 作为一个合法的提示项塞进去，这样你打 @mar 的时候窗口才会继续开着。
+                    val keywordRegex = Regex("(?i)@[a-zA-Z0-9_-]*$")
+                    val kwMatch = keywordRegex.find(textBeforeCaret)
+                    if (kwMatch != null) {
+                        val typedKeyword = kwMatch.groupValues[0]
+                        if ("@martian".startsWith(typedKeyword.lowercase())) {
+                            trace("addCompletions: typing keyword, typedKeyword='$typedKeyword'")
+                            val newResult = result.withPrefixMatcher(typedKeyword)
+                            // 提供 @martian 这个补全项，这样窗口就不会因为没结果而关闭
+                            newResult.addElement(LookupElementBuilder.create("@martian")
+                                .withInsertHandler { ctx, _ ->
+                                    // 阻止回车键或选中时产生的默认换行/字符插入动作
+                                    ctx.setAddCompletionChar(false)
+                                    
+                                    val offset = ctx.selectionEndOffset
+                                    val chars = ctx.document.charsSequence
+                                    // 自动追加一个空格（如果后面没有空格的话），并且主动唤起下一次补全（展示报错码）
+                                    if (offset == chars.length || chars[offset] != ' ') {
+                                        ctx.document.insertString(offset, " ")
+                                    }
+                                    ctx.editor.caretModel.moveToOffset(offset + 1)
+                                    
+                                    com.intellij.codeInsight.AutoPopupController.getInstance(ctx.project)
+                                        .scheduleAutoPopup(ctx.editor)
+                                }
+                                .withTypeText("Martian Keyword"))
+                        }
+                    } else {
+                        trace("addCompletions: ignore, textBeforeCaret='$textBeforeCaret'")
+                    }
                 }
             })
     }
@@ -165,3 +141,5 @@ class MartianConfigurable : Configurable {
         MartianSettings.serverUrl = textField?.text ?: "http://localhost:3001"
     }
 }
+
+

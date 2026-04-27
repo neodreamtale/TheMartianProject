@@ -9,9 +9,6 @@
     <depends>com.intellij.modules.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- 0. 启动日志 -->
-        <postStartupActivity implementation="neo.porco.martian.MartianStartupActivity"/>
-
         <!-- 1. 自动补全 -->
         <completion.contributor language="any"
                                 implementationClass="neo.porco.martian.MartianCompletionContributor"/>
