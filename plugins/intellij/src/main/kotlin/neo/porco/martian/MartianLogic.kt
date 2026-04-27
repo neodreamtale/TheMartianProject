@@ -17,7 +17,8 @@ import java.net.URI
 import java.net.URL
 import javax.swing.JComponent
 import javax.swing.JTextField
-
+import com.intellij.lang.documentation.AbstractDocumentationProvider
+import com.intellij.lang.java.JavaDocumentationProvider
 
 // 1. 配置管理
 object MartianSettings {
@@ -129,6 +130,9 @@ class MartianCompletionContributor : CompletionContributor() {
         }
     }
 
+    /**
+     * 如果没呼唤martian就呼唤一下martian
+     */
     private fun completeMartianIfNeed(
         cleanText: String,
         result: CompletionResultSet,
@@ -169,38 +173,6 @@ class MartianCompletionContributor : CompletionContributor() {
         } else {
             trace("addCompletions: ignore, textBeforeCaret='$textBeforeCaret'")
         }
-    }
-}
-
-// 3. 超链接逻辑 (让代码里的 @martian CODE 变得可以点击)
-class MartianReferenceContributor : PsiReferenceContributor() {
-    override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
-        registrar.registerReferenceProvider(
-            com.intellij.patterns.PlatformPatterns.psiElement(PsiComment::class.java), object : PsiReferenceProvider() {
-                override fun getReferencesByElement(
-                    element: PsiElement, context: ProcessingContext
-                ): Array<PsiReference> {
-                    val text = element.text
-                    val regex = Regex("@martian\\s+([a-zA-Z0-9_-]+)")
-                    return regex.findAll(text).map { match ->
-                        val range = TextRange(match.range.first, match.range.last + 1)
-                        val code = match.groups[1]?.value ?: ""
-                        object : PsiReferenceBase<PsiElement>(element, range) {
-                            override fun resolve(): PsiElement? = null // 我们不需要跳转到代码，只需要点击效果
-                            override fun handleElementRename(newElementName: String): PsiElement = element
-                            override fun bindToElement(element: PsiElement): PsiElement = element
-                            override fun getVariants(): Array<Any> = emptyArray()
-
-                            // 关键：点击后的动作
-                            fun resolveReference(): PsiElement? {
-                                Desktop.getDesktop()
-                                    .browse(URI("${MartianSettings.serverUrl}/pages/problem/edit?code=$code"))
-                                return null
-                            }
-                        }
-                    }.toList().toTypedArray()
-                }
-            })
     }
 }
 
@@ -251,6 +223,122 @@ class MartianJavadocTagInfo : com.intellij.psi.javadoc.JavadocTagInfo {
     override fun getName(): String = "martian"
     override fun isInline(): Boolean = false
     override fun isValidInContext(element: PsiElement?): Boolean = true
-    override fun getReference(value: com.intellij.psi.javadoc.PsiDocTagValue?): PsiReference? = null
+
+    override fun getReference(value: com.intellij.psi.javadoc.PsiDocTagValue?): PsiReference? {
+        if (value == null) return null
+        val code = value.text
+        // `value` 代表的就是 CODE 这一部分
+        return object : PsiReferenceBase<PsiElement>(value, TextRange(0, code.length)) {
+            override fun resolve(): PsiElement? {
+                return value
+            }
+            override fun getVariants(): Array<Any> = emptyArray()
+        }
+    }
+
     override fun checkTagValue(value: com.intellij.psi.javadoc.PsiDocTagValue?): String? = null
+}
+
+class MartianDocumentationProvider : AbstractDocumentationProvider() {
+    override fun getCustomDocumentationElement(
+        editor: com.intellij.openapi.editor.Editor,
+        file: PsiFile,
+        contextElement: PsiElement?,
+        targetOffset: Int
+    ): PsiElement? {
+        // 向上查找，如果用户光标落在 @martian 标签本身或其附近的内容上，就精准提取这一个 Tag 作为触发元素
+        var parent = contextElement
+        while (parent != null) {
+            if (parent is com.intellij.psi.javadoc.PsiDocTag && parent.name == "martian") {
+                return parent
+            }
+            if (parent is PsiDocCommentOwner) break
+            parent = parent.parent
+        }
+        return super.getCustomDocumentationElement(editor, file, contextElement, targetOffset)
+    }
+
+    private fun buildMartianDoc(code: String): String {
+        val link = "${MartianSettings.serverUrl}/pages/problem/edit?code=$code"
+        
+        // 实时去服务端拉取这个错误码的详细信息
+        var cause = "获取中或未找到..."
+        var status = "未知"
+        try {
+            val url = URL("${MartianSettings.serverUrl}/api/problem/list?keyword=$code")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.connectTimeout = 2000 
+            conn.readTimeout = 2000
+            conn.requestMethod = "GET"
+
+            if (conn.responseCode == 200) {
+                val responseText = conn.inputStream.bufferedReader().use { it.readText() }
+                val json = JsonParser.parseString(responseText).asJsonObject
+                if (json.has("success") && json.get("success").asBoolean && json.has("data")) {
+                    val dataArray = json.getAsJsonArray("data")
+                    for (element in dataArray) {
+                        val obj = element.asJsonObject
+                        val itemCode = if (obj.has("code")) obj.get("code").asString else ""
+                        
+                        // 找到精确匹配的那个 code
+                        if (itemCode.equals(code, ignoreCase = true)) {
+                            status = if (obj.has("status") && !obj.get("status").isJsonNull) obj.get("status").asString else "无"
+                            cause = if (obj.has("cause") && !obj.get("cause").isJsonNull) obj.get("cause").asString else "无原因"
+                            break
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            trace("获取单个详情失败: ${e.message}")
+        }
+
+        return """
+            <div style="padding: 5px;">
+                <h3>Martian 异常码</h3>
+                <p><b>Code:</b> $code</p>
+                <p><b>状态:</b> $status</p>
+                <p><b>原因:</b> $cause</p>
+                <p><a href="$link">查看详情</a></p>
+            </div>
+        """.trimIndent()
+    }
+
+    override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
+        // 2. 如果光标悬停在 @martian 这个 tag 标签本身或附近
+        if (element is com.intellij.psi.javadoc.PsiDocTag && element.name == "martian") {
+            val code = element.valueElement?.text ?: ""
+            if (code.isNotBlank()) {
+                trace("generateDoc for @martian tag with code='$code'")
+                return buildMartianDoc(code)
+            }
+        }
+
+        // 3. 如果光标悬停在整个方法/类上，原样追加（当你悬停在 public void test() 时看到）
+        if (element is PsiDocCommentOwner) {
+            val docComment = element.docComment
+            if (docComment != null) {
+                val martianTags = docComment.findTagsByName("martian")
+                if (martianTags.isNotEmpty()) {
+                    var baseDoc = JavaDocumentationProvider().generateDoc(element, originalElement) ?: ""
+                    val st = StringBuilder("<hr/><b>Martian 异常码绑定：</b><br/><ul>")
+                    for (tag in martianTags) {
+                        val code = tag.valueElement?.text ?: ""
+                        val link = "${MartianSettings.serverUrl}/pages/problem/edit?code=$code"
+                        st.append("<li><b>$code</b> <a href=\"$link\">[查看错误码]</a></li>")
+                    }
+                    st.append("</ul>")
+                    
+                    // 将 </body> 替换掉以插入新内容（或者直接拼在末尾）
+                    if (baseDoc.contains("</body>")) {
+                        return baseDoc.replace("</body>", st.toString() + "</body>")
+                    } else {
+                        return baseDoc + st.toString()
+                    }
+                }
+            }
+        }
+        
+        return super.generateDoc(element, originalElement)
+    }
 }

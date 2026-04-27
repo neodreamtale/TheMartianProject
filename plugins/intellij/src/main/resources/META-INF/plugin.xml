@@ -12,20 +12,19 @@
         <!-- 1. 自动补全 -->
         <completion.contributor language="any"
                                 implementationClass="neo.porco.martian.MartianCompletionContributor"/>
-        
-        <!-- 2. 超链接 -->
-        <psi.referenceContributor language="any" 
-                                  implementationClass="neo.porco.martian.MartianReferenceContributor"/>
 
-        <!-- 3. 配置项 -->
-        <projectConfigurable parentId="tools" 
+        <!-- 3. 配置页 -->
+        <projectConfigurable parentId="tools"
                              instance="neo.porco.martian.MartianConfigurable"
                              displayName="Martian（火星救援）配置"/>
 
         <!-- 4. 去除 JavaDoc "Wrong tag" 报黄警告 -->
         <javadocTagInfo implementation="neo.porco.martian.MartianJavadocTagInfo"/>
 
-        <!-- 5. 监听输入唤起补全 -->
+        <!-- 5. 悬浮提示 Documentation Provider -->
+        <lang.documentationProvider language="JAVA" implementationClass="neo.porco.martian.MartianDocumentationProvider" order="first"/>
+
+        <!-- 6. 监听输入唤起补全 -->
         <typedHandler implementation="neo.porco.martian.MartianTypedHandler"/>
     </extensions>
 </idea-plugin>
