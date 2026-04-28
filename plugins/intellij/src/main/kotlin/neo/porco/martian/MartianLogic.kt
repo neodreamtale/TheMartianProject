@@ -19,10 +19,43 @@ import java.net.URI
 import java.net.URL
 import javax.swing.JComponent
 import javax.swing.JTextField
+import com.intellij.openapi.components.PersistentStateComponent
+import com.intellij.openapi.components.State
+import com.intellij.openapi.components.Storage
+import com.intellij.openapi.components.Service
 
 // 1. 配置管理
-object MartianSettings {
-    var serverUrl: String = "http://localhost:3001"
+@Service
+@State(
+    name = "MartianSettings",
+    storages = [Storage("MartianSettings.xml")]
+)
+class MartianSettings : PersistentStateComponent<MartianSettings.State> {
+
+    class State {
+        var serverUrl: String = "http://localhost:3001"
+    }
+
+    private var myState = State()
+
+    override fun getState(): State {
+        return myState
+    }
+
+    override fun loadState(state: State) {
+        myState = state
+    }
+
+    companion object {
+        val instance: MartianSettings
+            get() = ApplicationManager.getApplication().getService(MartianSettings::class.java)
+
+        var serverUrl: String
+            get() = instance.state.serverUrl
+            set(value) {
+                instance.state.serverUrl = value
+            }
+    }
 }
 
 private val LOG = Logger.getInstance("neo.porco.martian")
@@ -168,10 +201,20 @@ class MartianCompletionContributor : CompletionContributor() {
 // 4. 设置界面
 class MartianConfigurable : Configurable {
     private var textField: JTextField? = null
+    private var mainPanel: JComponent? = null
+
     override fun getDisplayName(): String = "Martian Settings"
+
     override fun createComponent(): JComponent {
         textField = JTextField(MartianSettings.serverUrl)
-        return textField!!
+
+        // 使用 FormBuilder 构造一个带有标签的标准排版面板
+        mainPanel = com.intellij.util.ui.FormBuilder.createFormBuilder()
+            .addLabeledComponent("Server URL: ", textField!!)
+            .addComponentFillVertically(javax.swing.JPanel(), 0)
+            .panel
+
+        return mainPanel!!
     }
 
     override fun isModified(): Boolean = textField?.text != MartianSettings.serverUrl

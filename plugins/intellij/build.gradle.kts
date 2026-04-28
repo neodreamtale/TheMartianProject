@@ -1,13 +1,11 @@
-import org.jetbrains.intellij.platform.gradle.TestFrameworkType
-
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "1.9.0"
     id("org.jetbrains.intellij.platform") version "2.0.0"
 }
 
-group = "com.neodreamtale.martian"
-version = "1.0-SNAPSHOT"
+group = "neo.porco.martian"
+version = "1.0.1-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -34,9 +32,20 @@ intellijPlatform {
             name = "NeoPorco"
         }
         description = "智能关联 Martian 异常管理系统的 IntelliJ IDEA 插件"
+        
+        ideaVersion {
+            sinceBuild = "232"
+            untilBuild = "253.*"
+        }
     }
 }
 
 kotlin {
     jvmToolchain(17)
+}
+
+tasks {
+    buildPlugin {
+        destinationDirectory.set(layout.projectDirectory.dir("../release"))
+    }
 }

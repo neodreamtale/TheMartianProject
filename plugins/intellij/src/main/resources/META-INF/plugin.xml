@@ -2,7 +2,7 @@
     <id>neo.porco.martian</id>
     <name>Martian（火星救援）</name>
     <vendor>NeoPorco</vendor>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
     <description>关联 Martian 管理exception系统 IntelliJ IDEA 插件</description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -14,9 +14,10 @@
                                 implementationClass="neo.porco.martian.MartianCompletionContributor"/>
 
         <!-- 3. 配置页 -->
-        <projectConfigurable parentId="tools"
-                             instance="neo.porco.martian.MartianConfigurable"
-                             displayName="Martian（火星救援）配置"/>
+        <applicationConfigurable parentId="tools"
+                                 instance="neo.porco.martian.MartianConfigurable"
+                                 id="neo.porco.martian.settings"
+                                 displayName="Martian（火星救援）配置"/>
 
         <!-- 4. 去除 JavaDoc "Wrong tag" 报黄警告 -->
         <javadocTagInfo implementation="neo.porco.martian.MartianJavadocTagInfo"/>
