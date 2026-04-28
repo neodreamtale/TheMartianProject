@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "build:vscode": "cd plugins/vscode && npm install && npm run compile"
+    "build:vscode": "cd plugins/vscode && npm install && npm run compile",
+    "package:vscode": "cd plugins/vscode && npm install && npm run compile && npm run package"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
