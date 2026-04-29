@@ -65,6 +65,10 @@ private fun trace(msg: String) {
     LOG.info("[Martian] $msg")
 }
 
+// Keep annotation-trigger matching consistent across contributors/handlers.
+private val MARTIANS_ANNOTATION_WITH_CODE_REGEX = Regex("(?i)@Martians\\b\\s*\\([^)]*\"([a-zA-Z0-9_-]*)$")
+private val MARTIANS_ANNOTATION_CONTEXT_REGEX = Regex("(?i)@Martians\\b\\s*\\([^)]*\"[a-zA-Z0-9_-]*$")
+
 // 2. 自动补全逻辑 (@martian )
 class MartianCompletionContributor : CompletionContributor() {
 
@@ -82,7 +86,10 @@ class MartianCompletionContributor : CompletionContributor() {
                     val cleanText = document.getText(TextRange(lineStart, offset))
                     trace("addCompletions invoked, cleanText='$cleanText'")
                     val triggerRegex = Regex("(?i)@martian\\s+([a-zA-Z0-9_-]*)$")
-                    val match = triggerRegex.find(cleanText)
+                    // 放宽正则限制：只要是在 @Martians 内部，遇到前置引号就开始匹配，支持数组 {"q1", "q2"}
+                    val annotationRegex = MARTIANS_ANNOTATION_WITH_CODE_REGEX
+                    
+                    val match = triggerRegex.find(cleanText) ?: annotationRegex.find(cleanText)
                     if (match != null) {
                         completeCodeInfoIfNeed(match, result)
                     } else {
@@ -235,7 +242,8 @@ class MartianTypedHandler : com.intellij.codeInsight.editorActions.TypedHandlerD
             // 注意：charTyped 发生在字符真正上屏之后，此时光标前的内容已经包含了新输入的字符
             val textBeforeCaret = document.getText(TextRange(lineStart, offset))
             val triggerRegex = Regex("(?i)@martian\\s+[a-zA-Z0-9_-]*$")
-            if (triggerRegex.containsMatchIn(textBeforeCaret)) {
+            val annotationRegex = MARTIANS_ANNOTATION_CONTEXT_REGEX
+            if (triggerRegex.containsMatchIn(textBeforeCaret) || annotationRegex.containsMatchIn(textBeforeCaret)) {
                 ApplicationManager.getApplication().invokeLater {
                     if (!editor.isDisposed && !project.isDisposed) {
                         CodeCompletionHandlerBase(CompletionType.BASIC).invokeCompletion(project, editor)
@@ -277,6 +285,13 @@ class MartianDocumentationProvider : AbstractDocumentationProvider() {
             if (parent is PsiDocTag && parent.name == "martian") {
                 return parent
             }
+            if (parent is PsiLiteralExpression) {
+                // 如果是真实注解 @Martians("xxx") 中的字符串字面量
+                val annotation = com.intellij.psi.util.PsiTreeUtil.getParentOfType(parent, PsiAnnotation::class.java)
+                if (annotation != null && annotation.nameReferenceElement?.referenceName?.contains("Martians") == true) {
+                    return parent
+                }
+            }
             if (parent is PsiDocCommentOwner) break
             parent = parent.parent
         }
@@ -293,16 +308,56 @@ class MartianDocumentationProvider : AbstractDocumentationProvider() {
             }
         }
 
-        // 3. 如果光标悬停在整个方法/类上，原样追加（当你悬停在 public void test() 时看到）
-        if (element is PsiDocCommentOwner) {
-            val docComment = element.docComment
-            if (docComment != null) {
-                val martianTags = docComment.findTagsByName("martian")
-                if (martianTags.isNotEmpty()) {
-                    return buildMartianListDoc(element, originalElement, martianTags)
+        // 匹配真实注解 @Martians("xxx")
+        if (element is PsiLiteralExpression) {
+            val annotation = com.intellij.psi.util.PsiTreeUtil.getParentOfType(element, PsiAnnotation::class.java)
+            if (annotation != null && annotation.nameReferenceElement?.referenceName?.contains("Martians") == true) {
+                val code = element.value as? String ?: ""
+                if (code.isNotBlank()) {
+                    trace("generateDoc for @Martians annotation with code='$code'")
+                    return buildMartianDoc(code)
                 }
             }
         }
+
+        // 3. 如果光标悬停在整个方法/类上，原样追加（当你悬停在 public void test() 时看到）
+        var martianCodes = mutableListOf<String>()
+        
+        if (element is PsiDocCommentOwner) {
+            val docComment = element.docComment
+            if (docComment != null) {
+                docComment.findTagsByName("martian").forEach { tag ->
+                    val code = tag.valueElement?.text ?: ""
+                    if (code.isNotBlank()) martianCodes.add(code)
+                }
+            }
+        }
+        
+        // 解析真实 Java/Kotlin 注解上的数组或单字符串
+        if (element is PsiModifierListOwner) {
+            val annotations = element.modifierList?.annotations?.filter { 
+                it.nameReferenceElement?.referenceName?.contains("Martians") == true 
+            }
+            annotations?.forEach { annotation ->
+                val attrValue = annotation.findAttributeValue("value") ?: annotation.findAttributeValue(null)
+                if (attrValue is PsiLiteralExpression) {
+                    val code = attrValue.value as? String
+                    if (!code.isNullOrBlank()) martianCodes.add(code)
+                } else if (attrValue is PsiArrayInitializerMemberValue) {
+                    attrValue.initializers.forEach { initVal ->
+                        if (initVal is PsiLiteralExpression) {
+                            val code = initVal.value as? String
+                            if (!code.isNullOrBlank()) martianCodes.add(code)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (martianCodes.isNotEmpty()) {
+            return buildMartianListDoc(element, originalElement, martianCodes)
+        }
+
         return super.generateDoc(element, originalElement)
     }
 
@@ -355,12 +410,11 @@ class MartianDocumentationProvider : AbstractDocumentationProvider() {
     }
 
     private fun buildMartianListDoc(
-        element: PsiDocCommentOwner, originalElement: PsiElement?, martianTags: Array<out PsiDocTag>
+        element: PsiElement, originalElement: PsiElement?, codes: List<String>
     ): String {
         val baseDoc = JavaDocumentationProvider().generateDoc(element, originalElement) ?: ""
         val st = StringBuilder("<hr/><b>Martian 异常码绑定：</b><br/><ul>")
-        for (tag in martianTags) {
-            val code = tag.valueElement?.text ?: ""
+        for (code in codes.toSet()) { // 去重
             val link = "${MartianSettings.serverUrl}/pages/problem/edit?code=$code"
             st.append("<li><b>$code</b> <a href=\"$link\">[查看错误码]</a></li>")
         }
