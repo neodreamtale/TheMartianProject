@@ -1,0 +1,431 @@
+package neo.porco.martian
+
+import com.google.gson.JsonParser
+import com.intellij.codeInsight.completion.*
+import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.lang.documentation.AbstractDocumentationProvider
+import com.intellij.lang.java.JavaDocumentationProvider
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.TextRange
+import com.intellij.psi.*
+import com.intellij.psi.javadoc.PsiDocTag
+import com.intellij.util.ProcessingContext
+import java.awt.Desktop
+import java.net.HttpURLConnection
+import java.net.URI
+import java.net.URL
+import javax.swing.JComponent
+import javax.swing.JTextField
+import com.intellij.openapi.components.PersistentStateComponent
+import com.intellij.openapi.components.State
+import com.intellij.openapi.components.Storage
+import com.intellij.openapi.components.Service
+
+// 1. 配置管理
+@Service
+@State(
+    name = "MartianSettings",
+    storages = [Storage("MartianSettings.xml")]
+)
+class MartianSettings : PersistentStateComponent<MartianSettings.State> {
+
+    class State {
+        var serverUrl: String = "http://localhost:3001"
+    }
+
+    private var myState = State()
+
+    override fun getState(): State {
+        return myState
+    }
+
+    override fun loadState(state: State) {
+        myState = state
+    }
+
+    companion object {
+        val instance: MartianSettings
+            get() = ApplicationManager.getApplication().getService(MartianSettings::class.java)
+
+        var serverUrl: String
+            get() = instance.state.serverUrl
+            set(value) {
+                instance.state.serverUrl = value
+            }
+    }
+}
+
+private val LOG = Logger.getInstance("neo.porco.martian")
+
+private fun trace(msg: String) {
+    println("[Martian] $msg")
+    LOG.info("[Martian] $msg")
+}
+
+// Keep annotation-trigger matching consistent across contributors/handlers.
+private val MARTIANS_ANNOTATION_WITH_CODE_REGEX = Regex("(?i)@Martians\\b\\s*\\([^)]*\"([a-zA-Z0-9_-]*)$")
+private val MARTIANS_ANNOTATION_CONTEXT_REGEX = Regex("(?i)@Martians\\b\\s*\\([^)]*\"[a-zA-Z0-9_-]*$")
+
+// 2. 自动补全逻辑 (@martian )
+class MartianCompletionContributor : CompletionContributor() {
+
+    init {
+        extend(
+            CompletionType.BASIC,
+            com.intellij.patterns.PlatformPatterns.psiElement(),
+            object : CompletionProvider<CompletionParameters>() {
+                override fun addCompletions(
+                    parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet
+                ) {
+                    val document = parameters.editor.document
+                    val offset = parameters.offset
+                    val lineStart = document.getLineStartOffset(document.getLineNumber(offset))
+                    val cleanText = document.getText(TextRange(lineStart, offset))
+                    trace("addCompletions invoked, cleanText='$cleanText'")
+                    val commentRegx = Regex("(?i)@martian\\s+([a-zA-Z0-9_-]*)$")
+                    // 放宽正则限制：只要是在 @Martians 内部，遇到前置引号就开始匹配，支持数组 {"q1", "q2"}
+                    val annotationRegx = MARTIANS_ANNOTATION_WITH_CODE_REGEX
+                    
+                    val match = commentRegx.find(cleanText) ?: annotationRegx.find(cleanText)
+                    if (match != null) {
+                        completeCodeInfoIfNeed(match, result)
+                    } else {
+                        completeMartianIfNeed(cleanText, result, cleanText)
+                    }
+                }
+            })
+    }
+
+    private fun completeCodeInfoIfNeed(match: MatchResult, result: CompletionResultSet) {
+        val typedCode = match.groupValues[1]
+        trace("addCompletions: matched `@martian`, typedCode='$typedCode'")
+        result.stopHere()//关闭普通的java注释提示
+        val newResult = result.withPrefixMatcher(typedCode)
+        // 关闭当前的本地过滤，立刻重新执行整个 addCompletions 再次发起网络请求！
+        newResult.restartCompletionOnAnyPrefixChange()
+        var hasItems = false
+        try {
+            val url = URL("${MartianSettings.serverUrl}/api/problem/list?keyword=$typedCode")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.connectTimeout = 3000 // UI补全不宜等待过久，3秒超时
+            conn.readTimeout = 3000
+            conn.requestMethod = "GET"
+
+            if (conn.responseCode == 200) {
+                val responseText = conn.inputStream.bufferedReader().use { it.readText() }
+                val json = JsonParser.parseString(responseText).asJsonObject
+
+                if (json.has("success") && json.get("success").asBoolean && json.has("data")) {
+                    val dataArray = json.getAsJsonArray("data")
+                    for (element in dataArray) {
+                        val obj = element.asJsonObject
+                        val code = if (obj.has("code")) obj.get("code").asString else ""
+                        val status =
+                            if (obj.has("status") && !obj.get("status").isJsonNull) obj.get("status").asString else "无"
+                        val cause =
+                            if (obj.has("cause") && !obj.get("cause").isJsonNull) obj.get("cause").asString else "无原因"
+
+                        // 构造提示列表的单行展示项
+                        val item = LookupElementBuilder.create(code).withTypeText("[$status]") // 右侧灰色小字
+                            .withTailText(" - $cause", true) // 跟随在代码后面的灰色副文本
+
+                        newResult.addElement(item)
+                        hasItems = true
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            trace("Network request failed: ${e.message}")
+        }
+
+        // 无条件添加至少一个选项，否则空结果会导致 IDEA 立马关闭提示框
+        // 如果连 typedCode 都没有，网络又没返回，就加一个占位等用户继续输入
+        if (typedCode.isNotEmpty()) {
+            newResult.addElement(
+                LookupElementBuilder.create(typedCode).withPresentableText("🆕 创建新异常码: $typedCode")
+                    .withInsertHandler { _, _ ->
+                        // 选中这条后，自动用浏览器打开新建页面
+                        try {
+                            Desktop.getDesktop()
+                                .browse(URI("${MartianSettings.serverUrl}/pages/problem/edit?code=$typedCode"))
+                        } catch (e: Exception) {
+                            trace("Open browser failed $e")
+                        }
+                    }
+                    .withAutoCompletionPolicy(com.intellij.codeInsight.lookup.AutoCompletionPolicy.NEVER_AUTOCOMPLETE)
+            )
+        } else if (!hasItems) {
+            newResult.addElement(
+                LookupElementBuilder.create("").withPresentableText("正在等待输入异常码或响应...")
+                    .withInsertHandler { _, _ -> })
+        }
+    }
+
+    /**
+     * 如果没呼唤martian就呼唤一下martian
+     */
+    private fun completeMartianIfNeed(
+        cleanText: String, result: CompletionResultSet, textBeforeCaret: String
+    ) {
+        val keywordRegex = Regex("(?i)@[a-zA-Z0-9_-]*$")
+        val kwMatch = keywordRegex.find(cleanText)
+        if (kwMatch != null) {
+            val typedKeyword = kwMatch.groupValues[0]
+            if ("@martian".startsWith(typedKeyword.lowercase())) {
+                trace("addCompletions: typing keyword, typedKeyword='$typedKeyword'")
+                val newResult = result.withPrefixMatcher(typedKeyword)
+                // 提供 @martian 这个补全项，这样窗口就不会因为没结果而关闭
+                newResult.addElement(
+                    LookupElementBuilder.create("@martian").withInsertHandler { ctx, _ ->
+                        // 阻止回车键或选中时产生的默认换行/字符插入动作
+                        ctx.setAddCompletionChar(false)
+
+                        val offset = ctx.selectionEndOffset
+                        val chars = ctx.document.charsSequence
+                        // 自动追加一个空格（如果后面没有空格的话），并且主动唤起下一次补全（展示报错码）
+                        if (offset == chars.length || chars[offset] != ' ') {
+                            ctx.document.insertString(offset, " ")
+                        }
+                        ctx.editor.caretModel.moveToOffset(offset + 1)
+
+                        ApplicationManager.getApplication().invokeLater {
+                            if (!ctx.editor.isDisposed) {
+                                CodeCompletionHandlerBase(
+                                    CompletionType.BASIC
+                                ).invokeCompletion(ctx.project, ctx.editor)
+                            }
+                        }
+                    }.withTypeText("Martian Keyword")
+                )
+            }
+        } else {
+            trace("addCompletions: ignore, textBeforeCaret='$textBeforeCaret'")
+        }
+    }
+}
+
+// 4. 设置界面
+class MartianConfigurable : Configurable {
+    private var textField: JTextField? = null
+    private var mainPanel: JComponent? = null
+
+    override fun getDisplayName(): String = "Martian Settings"
+
+    override fun createComponent(): JComponent {
+        textField = JTextField(MartianSettings.serverUrl)
+
+        // 使用 FormBuilder 构造一个带有标签的标准排版面板
+        mainPanel = com.intellij.util.ui.FormBuilder.createFormBuilder()
+            .addLabeledComponent("Server URL: ", textField!!)
+            .addComponentFillVertically(javax.swing.JPanel(), 0)
+            .panel
+
+        return mainPanel!!
+    }
+
+    override fun isModified(): Boolean = textField?.text != MartianSettings.serverUrl
+    override fun apply() {
+        MartianSettings.serverUrl = textField?.text ?: "http://localhost:3001"
+    }
+}
+
+// 6. 监听用户敲击空格，若前面是 @martian，则立即唤起补全
+class MartianTypedHandler : com.intellij.codeInsight.editorActions.TypedHandlerDelegate() {
+    override fun charTyped(
+        c: Char, project: Project, editor: com.intellij.openapi.editor.Editor, file: PsiFile
+    ): Result {
+        val offset = editor.caretModel.offset
+        val document = editor.document
+        if (offset > 0) {
+            val lineStart = document.getLineStartOffset(document.getLineNumber(offset))
+            // 注意：charTyped 发生在字符真正上屏之后，此时光标前的内容已经包含了新输入的字符
+            val textBeforeCaret = document.getText(TextRange(lineStart, offset))
+            val commentRegx = Regex("(?i)@martian\\s+[a-zA-Z0-9_-]*$")
+            val annotationRegx = MARTIANS_ANNOTATION_CONTEXT_REGEX
+            if (commentRegx.containsMatchIn(textBeforeCaret) || annotationRegx.containsMatchIn(textBeforeCaret)) {
+                ApplicationManager.getApplication().invokeLater {
+                    if (!editor.isDisposed && !project.isDisposed) {
+                        CodeCompletionHandlerBase(CompletionType.BASIC).invokeCompletion(project, editor)
+                    }
+                }
+            }
+        }
+        return Result.CONTINUE
+    }
+}
+
+
+class MartianJavadocTagInfo : com.intellij.psi.javadoc.JavadocTagInfo {
+    override fun getName(): String = "martian"
+    override fun isInline(): Boolean = false
+    override fun isValidInContext(element: PsiElement?): Boolean = true
+    override fun getReference(value: com.intellij.psi.javadoc.PsiDocTagValue?): PsiReference? {
+        if (value == null) return null
+        val code = value.text
+        return object : PsiReferenceBase<PsiElement>(value, TextRange(0, code.length)) {
+            override fun resolve(): PsiElement {
+                return value
+            }
+
+            override fun getVariants(): Array<Any> = emptyArray()
+        }
+    }
+
+    override fun checkTagValue(value: com.intellij.psi.javadoc.PsiDocTagValue?): String? = null
+}
+
+class MartianDocumentationProvider : AbstractDocumentationProvider() {
+    override fun getCustomDocumentationElement(
+        editor: com.intellij.openapi.editor.Editor, file: PsiFile, contextElement: PsiElement?, targetOffset: Int
+    ): PsiElement? {
+        // 向上查找，如果用户光标落在 @martian 标签本身或其附近的内容上，就精准提取这一个 Tag 作为触发元素
+        var parent = contextElement
+        while (parent != null) {
+            if (parent is PsiDocTag && parent.name == "martian") {
+                return parent
+            }
+            if (parent is PsiLiteralExpression) {
+                // 如果是真实注解 @Martians("xxx") 中的字符串字面量
+                val annotation = com.intellij.psi.util.PsiTreeUtil.getParentOfType(parent, PsiAnnotation::class.java)
+                if (annotation != null && annotation.nameReferenceElement?.referenceName?.contains("Martians") == true) {
+                    return parent
+                }
+            }
+            if (parent is PsiDocCommentOwner) break
+            parent = parent.parent
+        }
+        return super.getCustomDocumentationElement(editor, file, contextElement, targetOffset)
+    }
+
+    override fun generateDoc(element: PsiElement, originalElement: PsiElement?): String? {
+        // 2. 如果光标悬停在 @martian 这个 tag 标签本身或附近
+        if (element is PsiDocTag && element.name == "martian") {
+            val code = element.valueElement?.text ?: ""
+            if (code.isNotBlank()) {
+                trace("generateDoc for @martian tag with code='$code'")
+                return buildMartianDoc(code)
+            }
+        }
+
+        // 匹配真实注解 @Martians("xxx")
+        if (element is PsiLiteralExpression) {
+            val annotation = com.intellij.psi.util.PsiTreeUtil.getParentOfType(element, PsiAnnotation::class.java)
+            if (annotation != null && annotation.nameReferenceElement?.referenceName?.contains("Martians") == true) {
+                val code = element.value as? String ?: ""
+                if (code.isNotBlank()) {
+                    trace("generateDoc for @Martians annotation with code='$code'")
+                    return buildMartianDoc(code)
+                }
+            }
+        }
+
+        // 3. 如果光标悬停在整个方法/类上，原样追加（当你悬停在 public void test() 时看到）
+        var martianCodes = mutableListOf<String>()
+        
+        if (element is PsiDocCommentOwner) {
+            val docComment = element.docComment
+            if (docComment != null) {
+                docComment.findTagsByName("martian").forEach { tag ->
+                    val code = tag.valueElement?.text ?: ""
+                    if (code.isNotBlank()) martianCodes.add(code)
+                }
+            }
+        }
+        
+        // 解析真实 Java/Kotlin 注解上的数组或单字符串
+        if (element is PsiModifierListOwner) {
+            val annotations = element.modifierList?.annotations?.filter { 
+                it.nameReferenceElement?.referenceName?.contains("Martians") == true 
+            }
+            annotations?.forEach { annotation ->
+                val attrValue = annotation.findAttributeValue("value") ?: annotation.findAttributeValue(null)
+                if (attrValue is PsiLiteralExpression) {
+                    val code = attrValue.value as? String
+                    if (!code.isNullOrBlank()) martianCodes.add(code)
+                } else if (attrValue is PsiArrayInitializerMemberValue) {
+                    attrValue.initializers.forEach { initVal ->
+                        if (initVal is PsiLiteralExpression) {
+                            val code = initVal.value as? String
+                            if (!code.isNullOrBlank()) martianCodes.add(code)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (martianCodes.isNotEmpty()) {
+            return buildMartianListDoc(element, originalElement, martianCodes)
+        }
+
+        return super.generateDoc(element, originalElement)
+    }
+
+    private fun buildMartianDoc(code: String): String {
+        val link = "${MartianSettings.serverUrl}/pages/problem/edit?code=$code"
+
+        // 实时去服务端拉取这个错误码的详细信息
+        var cause = "获取中或未找到..."
+        var status = "未知"
+        try {
+            val url = URL("${MartianSettings.serverUrl}/api/problem/list?keyword=$code")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.connectTimeout = 2000
+            conn.readTimeout = 2000
+            conn.requestMethod = "GET"
+
+            if (conn.responseCode == 200) {
+                val responseText = conn.inputStream.bufferedReader().use { it.readText() }
+                val json = JsonParser.parseString(responseText).asJsonObject
+                if (json.has("success") && json.get("success").asBoolean && json.has("data")) {
+                    val dataArray = json.getAsJsonArray("data")
+                    for (element in dataArray) {
+                        val obj = element.asJsonObject
+                        val itemCode = if (obj.has("code")) obj.get("code").asString else ""
+
+                        // 找到精确匹配的那个 code
+                        if (itemCode.equals(code, ignoreCase = true)) {
+                            status =
+                                if (obj.has("status") && !obj.get("status").isJsonNull) obj.get("status").asString else "无"
+                            cause =
+                                if (obj.has("cause") && !obj.get("cause").isJsonNull) obj.get("cause").asString else "无原因"
+                            break
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            trace("获取单个详情失败: ${e.message}")
+        }
+
+        return """
+            <div style="padding: 5px;">
+                <h3>Martian 异常码</h3>
+                <p><b>Code:</b> $code</p>
+                <p><b>状态:</b> $status</p>
+                <p><b>原因:</b> $cause</p>
+                <p><a href="$link">查看详情</a></p>
+            </div>
+        """.trimIndent()
+    }
+
+    private fun buildMartianListDoc(
+        element: PsiElement, originalElement: PsiElement?, codes: List<String>
+    ): String {
+        val baseDoc = JavaDocumentationProvider().generateDoc(element, originalElement) ?: ""
+        val st = StringBuilder("<hr/><b>Martian 异常码绑定：</b><br/><ul>")
+        for (code in codes.toSet()) { // 去重
+            val link = "${MartianSettings.serverUrl}/pages/problem/edit?code=$code"
+            st.append("<li><b>$code</b> <a href=\"$link\">[查看错误码]</a></li>")
+        }
+        st.append("</ul>")
+        return if (baseDoc.contains("</body>")) {
+            baseDoc.replace("</body>", "$st</body>")
+        } else {
+            baseDoc + st.toString()
+        }
+    }
+
+}

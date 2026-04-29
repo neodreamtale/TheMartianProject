@@ -1,0 +1,31 @@
+<idea-plugin>
+    <id>neo.porco.martian</id>
+    <name>Martian（火星救援）</name>
+    <vendor>NeoPorco</vendor>
+    <version>0.0.2</version>
+    <description>关联 Martian 管理exception系统 IntelliJ IDEA 插件</description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- 1. 自动补全 -->
+        <completion.contributor language="any"
+                                implementationClass="neo.porco.martian.MartianCompletionContributor"/>
+
+        <!-- 3. 配置页 -->
+        <applicationConfigurable parentId="tools"
+                                 instance="neo.porco.martian.MartianConfigurable"
+                                 id="neo.porco.martian.settings"
+                                 displayName="Martian（火星救援）配置"/>
+
+        <!-- 4. 去除 JavaDoc "Wrong tag" 报黄警告 -->
+        <javadocTagInfo implementation="neo.porco.martian.MartianJavadocTagInfo"/>
+
+        <!-- 5. 悬浮提示 Documentation Provider -->
+        <lang.documentationProvider language="JAVA" implementationClass="neo.porco.martian.MartianDocumentationProvider" order="first"/>
+
+        <!-- 6. 监听输入唤起补全 -->
+        <typedHandler implementation="neo.porco.martian.MartianTypedHandler"/>
+    </extensions>
+</idea-plugin>

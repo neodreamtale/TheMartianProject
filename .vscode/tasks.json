@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build:vscode",
+            "type": "shell",
+            "command": "npm run build:vscode",
+            "group": "build",
+            "problemMatcher": [
+                "$tsc"
+            ],
+            "detail": "Compiles the VS Code extension from the root"
+        }
+    ]
+}

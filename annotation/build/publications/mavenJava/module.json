@@ -1,0 +1,69 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "neo.porco",
+    "module": "Huston",
+    "version": "1.0.1-SNAPSHOT",
+    "attributes": {
+      "org.gradle.status": "integration"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.0.0"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "Huston-1.0.1-SNAPSHOT.jar",
+          "url": "Huston-1.0.1-SNAPSHOT.jar",
+          "size": 4001,
+          "sha512": "af68751ebe2c4317e1116b1906030fe18b16c6481026a0d42e0fcdcfec52df13790ea77ffe99d75600328f65dc11ea93a7259f54c67683dd5346db283ca6096e",
+          "sha256": "c55a100e91b27ed79a13c79ef44a25e43474acd2f90d7ba001b41d81003a216e",
+          "sha1": "63baeabf455536f55d1c41b93a356be395c2a388",
+          "md5": "9bef2a5856a0c6df18c345bf06e69bf7"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.squareup",
+          "module": "javapoet",
+          "version": {
+            "requires": "1.13.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "Huston-1.0.1-SNAPSHOT.jar",
+          "url": "Huston-1.0.1-SNAPSHOT.jar",
+          "size": 4001,
+          "sha512": "af68751ebe2c4317e1116b1906030fe18b16c6481026a0d42e0fcdcfec52df13790ea77ffe99d75600328f65dc11ea93a7259f54c67683dd5346db283ca6096e",
+          "sha256": "c55a100e91b27ed79a13c79ef44a25e43474acd2f90d7ba001b41d81003a216e",
+          "sha1": "63baeabf455536f55d1c41b93a356be395c2a388",
+          "md5": "9bef2a5856a0c6df18c345bf06e69bf7"
+        }
+      ]
+    }
+  ]
+}

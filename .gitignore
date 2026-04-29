@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/plugins/vscode/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -19,6 +20,8 @@
 
 # production
 /build
+/annotation/build/
+/annotation/.gradle/
 
 # misc
 .DS_Store
@@ -41,3 +44,4 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+/plugins/release/*

@@ -1,0 +1,50 @@
+{
+  "name": "martian-error-linker",
+  "publisher": "martian",
+  "displayName": "Martian Error Linker",
+  "description": "Clickable links for @martian error codes in comments.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact",
+    "onLanguage:java"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Martian（火星救援）",
+      "properties": {
+        "martian.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:3001",
+          "description": "[Martian] 指定异常管理系统的后端服务器地址。插件将通过此地址查询异常详情及生成跳转链接。"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "martian.openSettings",
+        "title": "Martian: 打开插件设置 (直达配置项)"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "npx @vscode/vsce package --no-dependencies --out ../release/"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "18.x",
+    "typescript": "^5.1.3"
+  }
+}

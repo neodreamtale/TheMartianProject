@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const keyword = searchParams.get('keyword') || ''
     const type = searchParams.get('type')
     const status = searchParams.get('status')
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 20)
 
     const where: any = {}
 
@@ -30,7 +31,8 @@ export async function GET(request: Request) {
 
     const problems = await prisma.problem.findMany({
       where,
-      orderBy: { updatedAt: 'desc' }
+      orderBy: { updatedAt: 'desc' },
+      take: limit
     })
 
     return NextResponse.json({ success: true, data: problems })

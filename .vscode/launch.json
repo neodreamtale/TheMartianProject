@@ -14,6 +14,19 @@
             "sourceMapPathOverrides": {
                 "webpack://_N_E/*": "${webRoot}/*"
             }
+        },
+        {
+            "name": "Run Extension (Martian)",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/plugins/vscode"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/plugins/vscode/out/**/*.js"
+            ],
+            "preLaunchTask": "build:vscode"
         }
         // {
         //     "type": "node",

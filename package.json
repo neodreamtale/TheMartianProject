@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "next dev -p 3001 -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:vscode": "cd plugins/vscode && npm install && npm run compile",
+    "package:vscode": "cd plugins/vscode && npm install && npm run compile && npm run package"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",

@@ -1,0 +1,5 @@
+/**
+ * @martian
+*/
+const handleError = () => {
+}
