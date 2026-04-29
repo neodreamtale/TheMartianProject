@@ -48,9 +48,14 @@ public class MartiansProcessor extends AbstractProcessor {
                     .addModifiers(Modifier.PUBLIC);
 
             // 遍历注解值，生成常量
+            java.util.Set<String> existNames = new java.util.HashSet<>();
             for (String val : values) {
                 // 如果值是 "Error_USER_NOT_FOUND"，去掉 "Error_" 前缀，并确保大写
                 String constantName = val.toUpperCase();
+
+                if (!existNames.add(constantName)) {
+                    continue; // 默默去重
+                }
 
                 FieldSpec fieldSpec = FieldSpec.builder(String.class, constantName)
                         .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
