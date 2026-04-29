@@ -20,6 +20,8 @@
 
 # production
 /build
+/annotation/build/
+/annotation/.gradle/
 
 # misc
 .DS_Store

@@ -2,8 +2,8 @@
   "formatVersion": "1.1",
   "component": {
     "group": "neo.porco",
-    "module": "annotation",
-    "version": "1.0-SNAPSHOT",
+    "module": "Huston",
+    "version": "1.0.1-SNAPSHOT",
     "attributes": {
       "org.gradle.status": "integration"
     }
@@ -19,19 +19,19 @@
       "attributes": {
         "org.gradle.category": "library",
         "org.gradle.dependency.bundling": "external",
-        "org.gradle.jvm.version": 17,
+        "org.gradle.jvm.version": 8,
         "org.gradle.libraryelements": "jar",
         "org.gradle.usage": "java-api"
       },
       "files": [
         {
-          "name": "annotation-1.0-SNAPSHOT.jar",
-          "url": "annotation-1.0-SNAPSHOT.jar",
-          "size": 4112,
-          "sha512": "bb2545ba471b827b118057396567543f28f245300e6c157e74ef12f4b7d9313fabefa04e82cbd9c46193ee981204ec8832ed694da4b14c6d76d2e9d0fc63cc2b",
-          "sha256": "a718fce5b86f94121ef18cefe0756e4cd5cc81c7642cd2962da1a5df849a5619",
-          "sha1": "0672a46418c5db9676e2555e9a82d1673f7e09dc",
-          "md5": "16b4db45112409c7d4e77d8e48e159bf"
+          "name": "Huston-1.0.1-SNAPSHOT.jar",
+          "url": "Huston-1.0.1-SNAPSHOT.jar",
+          "size": 4001,
+          "sha512": "af68751ebe2c4317e1116b1906030fe18b16c6481026a0d42e0fcdcfec52df13790ea77ffe99d75600328f65dc11ea93a7259f54c67683dd5346db283ca6096e",
+          "sha256": "c55a100e91b27ed79a13c79ef44a25e43474acd2f90d7ba001b41d81003a216e",
+          "sha1": "63baeabf455536f55d1c41b93a356be395c2a388",
+          "md5": "9bef2a5856a0c6df18c345bf06e69bf7"
         }
       ]
     },
@@ -40,7 +40,7 @@
       "attributes": {
         "org.gradle.category": "library",
         "org.gradle.dependency.bundling": "external",
-        "org.gradle.jvm.version": 17,
+        "org.gradle.jvm.version": 8,
         "org.gradle.libraryelements": "jar",
         "org.gradle.usage": "java-runtime"
       },
@@ -55,13 +55,13 @@
       ],
       "files": [
         {
-          "name": "annotation-1.0-SNAPSHOT.jar",
-          "url": "annotation-1.0-SNAPSHOT.jar",
-          "size": 4112,
-          "sha512": "bb2545ba471b827b118057396567543f28f245300e6c157e74ef12f4b7d9313fabefa04e82cbd9c46193ee981204ec8832ed694da4b14c6d76d2e9d0fc63cc2b",
-          "sha256": "a718fce5b86f94121ef18cefe0756e4cd5cc81c7642cd2962da1a5df849a5619",
-          "sha1": "0672a46418c5db9676e2555e9a82d1673f7e09dc",
-          "md5": "16b4db45112409c7d4e77d8e48e159bf"
+          "name": "Huston-1.0.1-SNAPSHOT.jar",
+          "url": "Huston-1.0.1-SNAPSHOT.jar",
+          "size": 4001,
+          "sha512": "af68751ebe2c4317e1116b1906030fe18b16c6481026a0d42e0fcdcfec52df13790ea77ffe99d75600328f65dc11ea93a7259f54c67683dd5346db283ca6096e",
+          "sha256": "c55a100e91b27ed79a13c79ef44a25e43474acd2f90d7ba001b41d81003a216e",
+          "sha1": "63baeabf455536f55d1c41b93a356be395c2a388",
+          "md5": "9bef2a5856a0c6df18c345bf06e69bf7"
         }
       ]
     }

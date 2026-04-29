@@ -29,3 +29,31 @@
 
 ## 配置
 服务器目前开放地址：http://172.30.52.161:3001
+### Java依赖
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>neo.porco</groupId>
+        <artifactId>Huston</artifactId>
+        <version>1.0.1-SNAPSHOT</version>
+    </dependency>
+</dependencies>
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+                <annotationProcessorPaths>
+                    <path>
+                        <groupId>neo.porco</groupId>
+                        <artifactId>Huston</artifactId>
+                        <version>1.0.1-SNAPSHOT</version>
+                    </path>
+                </annotationProcessorPaths>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
