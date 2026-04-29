@@ -85,11 +85,11 @@ class MartianCompletionContributor : CompletionContributor() {
                     val lineStart = document.getLineStartOffset(document.getLineNumber(offset))
                     val cleanText = document.getText(TextRange(lineStart, offset))
                     trace("addCompletions invoked, cleanText='$cleanText'")
-                    val triggerRegex = Regex("(?i)@martian\\s+([a-zA-Z0-9_-]*)$")
+                    val commentRegx = Regex("(?i)@martian\\s+([a-zA-Z0-9_-]*)$")
                     // 放宽正则限制：只要是在 @Martians 内部，遇到前置引号就开始匹配，支持数组 {"q1", "q2"}
-                    val annotationRegex = MARTIANS_ANNOTATION_WITH_CODE_REGEX
+                    val annotationRegx = MARTIANS_ANNOTATION_WITH_CODE_REGEX
                     
-                    val match = triggerRegex.find(cleanText) ?: annotationRegex.find(cleanText)
+                    val match = commentRegx.find(cleanText) ?: annotationRegx.find(cleanText)
                     if (match != null) {
                         completeCodeInfoIfNeed(match, result)
                     } else {
@@ -154,7 +154,9 @@ class MartianCompletionContributor : CompletionContributor() {
                         } catch (e: Exception) {
                             trace("Open browser failed $e")
                         }
-                    })
+                    }
+                    .withAutoCompletionPolicy(com.intellij.codeInsight.lookup.AutoCompletionPolicy.NEVER_AUTOCOMPLETE)
+            )
         } else if (!hasItems) {
             newResult.addElement(
                 LookupElementBuilder.create("").withPresentableText("正在等待输入异常码或响应...")
@@ -241,9 +243,9 @@ class MartianTypedHandler : com.intellij.codeInsight.editorActions.TypedHandlerD
             val lineStart = document.getLineStartOffset(document.getLineNumber(offset))
             // 注意：charTyped 发生在字符真正上屏之后，此时光标前的内容已经包含了新输入的字符
             val textBeforeCaret = document.getText(TextRange(lineStart, offset))
-            val triggerRegex = Regex("(?i)@martian\\s+[a-zA-Z0-9_-]*$")
-            val annotationRegex = MARTIANS_ANNOTATION_CONTEXT_REGEX
-            if (triggerRegex.containsMatchIn(textBeforeCaret) || annotationRegex.containsMatchIn(textBeforeCaret)) {
+            val commentRegx = Regex("(?i)@martian\\s+[a-zA-Z0-9_-]*$")
+            val annotationRegx = MARTIANS_ANNOTATION_CONTEXT_REGEX
+            if (commentRegx.containsMatchIn(textBeforeCaret) || annotationRegx.containsMatchIn(textBeforeCaret)) {
                 ApplicationManager.getApplication().invokeLater {
                     if (!editor.isDisposed && !project.isDisposed) {
                         CodeCompletionHandlerBase(CompletionType.BASIC).invokeCompletion(project, editor)
