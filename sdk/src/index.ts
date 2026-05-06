@@ -28,7 +28,9 @@ export class dialog {
     }
 
     /**
-     * 弹出错误面板
+     * 展示默认的dialog
+     * @param errorCode Martian的错误码
+     * @param errorTip Martian的错误提示，字段一般为toUser
      */
     static async showError(errorCode: string, errorTip?: string) {
         try {
