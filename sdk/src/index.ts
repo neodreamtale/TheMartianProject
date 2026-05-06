@@ -3,6 +3,14 @@ export interface MartianOptions {
     zIndex?: number;
 }
 
+/**
+ * 开发阶段的测试小妙招（不用频繁发布）
+ * 在你们联调期间，你可能随时会改动这个 SDK（比如调整一下阴影大小、改一下字号）。如果每次修改都要去走一遍 npm publish 会非常痛苦。
+ * 这时候前端有一个神技叫 npm link：
+ * 在你的 sdk 目录下执行：npm link（这相当于把你的 SDK 注册到了你电脑本地的全局大名单里）。
+ * 在你们前端同事的 Vue 项目目录下执行：npm link @martian/sdk。
+这样，你在 sdk 源码里修改了弹窗样式，执行一下 npm run build，由于本地文件存在软链接映射，前端同事的 Vue 项目里刷新就能立刻看到你改的最新效果！ 等彻底调试满意了，再 npm publish 发正式版，完美！
+ */
 export class dialog {
     private static serverUrl: string = "http://172.30.52.161:3001";
     private static zIndex: number = 304;
