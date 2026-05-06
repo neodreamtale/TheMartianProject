@@ -30,17 +30,19 @@ export class dialog {
     /**
      * 弹出错误面板
      */
-    static async showError(errorCode: string) {
+    static async showError(errorCode: string, errorTip?: string) {
         try {
-            // TODO: 后续可以替换为真实后端的接口地址
-            // const response = await fetch(`${this.serverUrl}/api/problem/detail?code=${errorCode}`);
-            // const data = await response.json();
-
-            // 为了演示，这里直接模拟数据返回
+            let detailPage = ""
+            if (!errorTip) {
+                const response = await fetch(`${this.serverUrl}/api/problem/detail?code=${errorCode}`);
+                let data = await response.json();
+                errorTip = data.toUser
+                detailPage = data.detailPage
+            }
             const mockData = {
-                title: "请求被拦截",
-                message: `抱歉，由于业务限制暂时无法处理您的请求（错误码：${errorCode}）。您可能需要先完成相关的验证。`,
-                actionName: "去验证"
+                title: "出了点问题",
+                message: `${errorTip},错误码:${errorCode}`,
+                detailPage: "去验证"
             };
 
             this.renderDialog(mockData);
@@ -52,7 +54,7 @@ export class dialog {
     /**
      * 使用纯原生 JS 渲染高颜值弹窗 (Vanilla CSS + DOM API)
      */
-    private static renderDialog(data: { title: string; message: string; actionName: string }) {
+    private static renderDialog(data: { title: string; message: string; detailPage: string }) {
         // 防止重复弹窗
         if (document.getElementById("martian-dialog-wrapper")) {
             return;
@@ -116,33 +118,28 @@ export class dialog {
             setTimeout(() => document.body.removeChild(wrapper), 200);
         };
 
-        // 动作按钮（比如跳去实名认证页）
-        const actionBtn = document.createElement("button");
-        actionBtn.style.cssText = `
+        if (data.detailPage) {
+            const actionBtn = document.createElement("button");
+            actionBtn.style.cssText = `
             padding: 8px 16px; border: none; border-radius: 6px;
             background: #2563EB; color: #fff; font-weight: 500; cursor: pointer;
-            transition: background 0.2s;
-        `;
-        actionBtn.innerText = data.actionName;
-        actionBtn.onmouseover = () => actionBtn.style.background = "#1D4ED8";
-        actionBtn.onmouseout = () => actionBtn.style.background = "#2563EB";
-        actionBtn.onclick = () => {
-            alert(`业务方配置了新动作：${data.actionName}`);
-            closeBtn.click();
-        };
+            transition: background 0.2s;`;
+            actionBtn.innerText = "查看详情";
+            actionBtn.onmouseover = () => actionBtn.style.background = "#1D4ED8";
+            actionBtn.onmouseout = () => actionBtn.style.background = "#2563EB";
+            actionBtn.onclick = () => {
+                closeBtn.click();
+                window.location.href = data.detailPage
+            };
+            btnContainer.appendChild(actionBtn);
+        }
 
-        // 拼装所有元素
         btnContainer.appendChild(closeBtn);
-        btnContainer.appendChild(actionBtn);
         dialog.appendChild(title);
         dialog.appendChild(message);
         dialog.appendChild(btnContainer);
         wrapper.appendChild(dialog);
-
-        // 挂载到浏览器真实的 Body 上
         document.body.appendChild(wrapper);
-
-        // 触发丝滑的进场动画
         requestAnimationFrame(() => {
             wrapper.style.opacity = "1";
             dialog.style.transform = "translateY(0)";

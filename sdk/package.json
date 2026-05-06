@@ -1,7 +1,7 @@
 {
   "name": "@martian/sdk",
   "version": "1.0.0",
-  "description": "Martian framework-agnostic error SDK",
+  "description": "Martian error dialog SDK",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -14,7 +14,7 @@
     "typescript": "^5.3.3"
   },
   "publishConfig": {
-    "registry": "http://你们公司的npm私服地址/",
+    "registry": "http://testjenkinsnpm.longdaoyun.com",
     "access": "public"
   }
 }
