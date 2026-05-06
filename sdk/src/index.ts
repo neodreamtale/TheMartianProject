@@ -63,15 +63,15 @@ export class dialog {
             return;
         }
 
-        // 最外层的全屏灰色半透明遮罩
         const wrapper = document.createElement("div");
         wrapper.id = "martian-dialog-wrapper";
+        /* 最外层的全屏灰色半透明遮罩 这个后面最高层级做成能配置的吧，可能其他前端代码不控制这个做成屎山了 */
         wrapper.style.cssText = `
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 0, 0, 0.4);
             display: flex; align-items: center; justify-content: center;
-            z-index: ${this.zIndex}; /* 这个后面最高层级做成能配置的吧，可能其他前端代码不控制这个做成屎山了 */
+            z-index: ${this.zIndex}; 
             font-family: system-ui, -apple-system, sans-serif;
             backdrop-filter: blur(4px);
             opacity: 0;
