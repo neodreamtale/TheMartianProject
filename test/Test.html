@@ -8,12 +8,12 @@
 
 <body>
     <h2>假装这是一个很老的业务系统</h2>
-    <button onclick="Martian.dialog.showError('Yang_fei_ge_001')">模拟请求报错了</button>
+    <button onclick="Martian.dialog.showError('Yang_fei_ge_001','')">模拟请求报错了</button>
     <button onclick="Martian.dialog.showError('INVALID_OTP')">短信验证码错误</button>
     <script src="../sdk/dist/index.global.js"></script>
     <script>
         // 初始化
-        Martian.dialog.init({ serverUrl: 'http://172.30.52.161:3001', zIndex: 100 });
+        Martian.dialog.init({ serverUrl: 'http://172.30.52.161:3001', zIndex: 100, });
     </script>
 </body>
 

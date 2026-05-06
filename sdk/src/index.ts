@@ -1,3 +1,5 @@
+import { request } from "./utils/request";
+
 export interface MartianOptions {
     serverUrl?: string;
     zIndex?: number;
@@ -32,15 +34,18 @@ export class dialog {
         try {
             let detailPage = ""
             if (!errorTip) {
-                const response = await fetch(`${this.serverUrl}/api/problem?code=${errorCode}`);
-                let data = await response.json();
-                errorTip = data.toUser
-                detailPage = data.detailPage
+                const resp = await request(this.serverUrl, `/api/problem?code=${errorCode}`);
+                if (resp.found && resp.data) {
+                    errorTip = resp.data.toUser;
+                    detailPage = resp.data.detailPage;
+                } else {
+                    errorTip = "未知错误，请联系开发人员";
+                }
             }
             const mockData = {
-                title: "出了点问题",
+                title: "遇到问题",
                 message: `${errorTip},错误码:${errorCode}`,
-                detailPage: "去验证"
+                detailPage: detailPage
             };
 
             this.renderDialog(mockData);
